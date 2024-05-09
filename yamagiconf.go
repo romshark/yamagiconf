@@ -487,17 +487,26 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 }
 
 func validateValue(tp reflect.Type, node *yaml.Node) error {
+	kind := tp.Kind()
+	if kind == reflect.String && node.Value == "null" {
+		switch node.Style {
+		case yaml.DoubleQuotedStyle, yaml.SingleQuotedStyle:
+			return nil
+		default:
+			return ErrNullOnNonPointer
+		}
+	}
 	if v := node.Value; v == "~" || strings.EqualFold(v, "null") {
 		if v != "null" {
 			return ErrBadNullLiteral
 		}
-		switch tp.Kind() {
+		switch kind {
 		case reflect.Pointer, reflect.Slice, reflect.Map:
 		default:
 			return ErrNullOnNonPointer
 		}
 	}
-	if tp.Kind() == reflect.Bool {
+	if kind == reflect.Bool {
 		if v := node.Value; v != "true" && v != "false" {
 			return ErrBadBoolLiteral
 		}

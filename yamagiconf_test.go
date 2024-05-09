@@ -23,12 +23,16 @@ func LoadSrc[T any](src string) (*T, error) {
 
 func TestLoadFile(t *testing.T) {
 	type Embedded struct {
-		AnyString       string            `yaml:"any-string"`
-		RequiredString  string            `yaml:"required-string" validate:"required"`
-		MapStringString map[string]string `yaml:"map-string-string"`
-		MapIntInt       map[int16]int16   `yaml:"map-int-int"`
-		SliceStr        []string          `yaml:"slice-str"`
-		SliceInt        []int64           `yaml:"slice-int"`
+		AnyString        string            `yaml:"any-string"`
+		StrQuotedNull    string            `yaml:"str-quoted-null"`
+		StrDubQuotNull   string            `yaml:"str-doublequoted-null"`
+		StrBlockNull     string            `yaml:"str-block-null"`
+		StrFoldBlockNull string            `yaml:"str-foldblock-null"`
+		RequiredString   string            `yaml:"required-string" validate:"required"`
+		MapStringString  map[string]string `yaml:"map-string-string"`
+		MapIntInt        map[int16]int16   `yaml:"map-int-int"`
+		SliceStr         []string          `yaml:"slice-str"`
+		SliceInt         []int64           `yaml:"slice-int"`
 	}
 	type TestConfig struct {
 		Embedded `yaml:"embedded"`
@@ -41,6 +45,12 @@ func TestLoadFile(t *testing.T) {
 int32: 42
 embedded:
   any-string: 'any string'
+  str-quoted-null: 'null'
+  str-doublequoted-null: "null"
+  str-block-null: |
+    null
+  str-foldblock-null: >
+    null
   required-string: 'OK'
   slice-str:
     - 1
@@ -61,6 +71,10 @@ enabled: true`), 0o664)
 	require.NoError(t, err)
 
 	require.Equal(t, `any string`, c.AnyString)
+	require.Equal(t, `null`, c.StrQuotedNull)
+	require.Equal(t, `null`, c.StrDubQuotNull)
+	require.Equal(t, "null\n", c.StrBlockNull)
+	require.Equal(t, "null\n", c.StrFoldBlockNull)
 	require.Equal(t, `OK`, c.RequiredString)
 	require.Equal(t, int32(42), c.Int32)
 	require.Equal(t, map[string]string{"foo": "bar", "bazz": "fuzz"}, c.MapStringString)
@@ -401,15 +415,28 @@ func TestLoadErrMissingConfig(t *testing.T) {
 }
 
 func TestLoadNullOnNonPointer(t *testing.T) {
-	type TestConfig struct {
-		Ok  string `yaml:"ok"`
-		Str string `yaml:"str"`
-	}
-	_, err := LoadSrc[TestConfig]("ok: OK\nstr: null")
-	require.ErrorIs(t, err, yamagiconf.ErrNullOnNonPointer)
-	require.Equal(t,
-		`at 2:6: "str" (TestConfig.Str): cannot assign null to non-pointer type`,
-		err.Error())
+	t.Run("on_string", func(t *testing.T) {
+		type TestConfig struct {
+			Ok  string `yaml:"ok"`
+			Str string `yaml:"str"`
+		}
+		_, err := LoadSrc[TestConfig]("ok: OK\nstr: null")
+		require.ErrorIs(t, err, yamagiconf.ErrNullOnNonPointer)
+		require.Equal(t,
+			`at 2:6: "str" (TestConfig.Str): cannot assign null to non-pointer type`,
+			err.Error())
+	})
+	t.Run("on_uint32", func(t *testing.T) {
+		type TestConfig struct {
+			Ok     string `yaml:"ok"`
+			Uint32 uint32 `yaml:"uint32"`
+		}
+		_, err := LoadSrc[TestConfig]("ok: OK\nuint32: null")
+		require.ErrorIs(t, err, yamagiconf.ErrNullOnNonPointer)
+		require.Equal(t,
+			`at 2:9: "uint32" (TestConfig.Uint32): cannot assign null to non-pointer type`,
+			err.Error())
+	})
 }
 
 func TestLoadErrNilConfig(t *testing.T) {
