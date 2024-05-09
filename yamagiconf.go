@@ -50,7 +50,8 @@ var (
 //   - T is recursive.
 //   - T contains any unsupported types (signed and unsigned integers with unspecified
 //     width, interface (including `any`), function, channel,
-//     unsafe.Pointer, pointer to pointer, pointer to slice and pointer to map).
+//     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map,
+//     map with non-pointer struct value).
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -372,11 +373,10 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		v.SetUint(uint64(i))
 	case reflect.Struct:
 		for i := range tp.NumField() {
-			if n := tp.Field(i).Tag.Get("env"); n != "" {
-				err := unmarshalEnv(path+"."+tp.Field(i).Name, n, v.Field(i))
-				if err != nil {
-					return err
-				}
+			n := tp.Field(i).Tag.Get("env")
+			err := unmarshalEnv(path+"."+tp.Field(i).Name, n, v.Field(i))
+			if err != nil {
+				return err
 			}
 		}
 	case reflect.Slice, reflect.Array:
@@ -387,10 +387,16 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			}
 		}
 	case reflect.Map:
-		for i := range v.Len() {
-			err := unmarshalEnv("", fmt.Sprintf("%s[%d]", path, i), v.Index(i))
-			if err != nil {
-				return err
+		if tp.Elem().Kind() == reflect.Pointer {
+			iter := v.MapRange()
+			for iter.Next() {
+				keyStr := iter.Value().String()
+				path := fmt.Sprintf("%s[%s]", path, keyStr)
+				value := v.MapIndex(iter.Key())
+				err := unmarshalEnv("", path, value.Elem())
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -595,6 +601,14 @@ func ValidateType[T any]() error {
 							"such as int32 or int64 instead of int")
 				case reflect.Slice, reflect.Array:
 					tp = tp.Elem()
+					continue LOOP
+				case reflect.Map:
+					tp = tp.Elem()
+					if tp.Kind() == reflect.Struct {
+						return fmt.Errorf("%s: %w: %s, %s",
+							path+"."+f.Name, ErrUnsupportedType, tp.String(),
+							"use pointer to struct as map value")
+					}
 					continue LOOP
 				}
 				break LOOP

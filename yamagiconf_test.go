@@ -344,7 +344,7 @@ recurs:
 
 	t.Run("ptr_map", func(t *testing.T) {
 		type TestConfig struct {
-			PtrMap **map[string]string `yaml:"ptr-map"`
+			PtrMap *map[string]string `yaml:"ptr-map"`
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
@@ -403,6 +403,22 @@ recurs:
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
 		require.Equal(t, "TestConfig.Anything: "+
 			"unsupported type: interface {}", err.Error())
+	})
+
+	t.Run("map_of_struct", func(t *testing.T) {
+		type Foo struct {
+			Foo string `yaml:"foo"`
+		}
+		type TestConfig struct {
+			Map map[string]Foo `yaml:"map"`
+		}
+
+		_, err := LoadSrc[TestConfig](yamlContents)
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t,
+			"TestConfig.Map: unsupported type: yamagiconf_test.Foo, "+
+				"use pointer to struct as map value",
+			err.Error())
 	})
 }
 
@@ -785,22 +801,30 @@ container:
 }
 
 func TestLoadEnvVar(t *testing.T) {
+	type Foo struct {
+		Foo string `yaml:"foo" env:"FOO"`
+	}
+	type Map2D = map[string]map[string]string
 	type TestConfig struct {
-		BoolFalse     bool    `yaml:"bool_false" env:"BOOL_FALSE"`
-		BoolTrue      bool    `yaml:"bool_true" env:"BOOL_TRUE"`
-		String        string  `yaml:"string" env:"STRING"`
-		Float32       float32 `yaml:"float32" env:"FLOAT_32"`
-		Float64       float64 `yaml:"float64" env:"FLOAT_64"`
-		Int8          int8    `yaml:"int8" env:"INT_8"`
-		Uint8         uint8   `yaml:"uint8" env:"UINT_8"`
-		Int16         int16   `yaml:"int16" env:"INT_16"`
-		Uint16        uint16  `yaml:"uint16" env:"UINT_16"`
-		Int32         int32   `yaml:"int32" env:"INT_32"`
-		Uint32        uint32  `yaml:"uint32" env:"UINT_32"`
-		Int64         int64   `yaml:"int64" env:"INT_64"`
-		Uint64        uint64  `yaml:"uint64" env:"UINT_64"`
-		PtrUint64     *uint64 `yaml:"ptr-uint64" env:"PTR_UINT_64"`
-		PtrUint64Null *uint64 `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		BoolFalse     bool            `yaml:"bool_false" env:"BOOL_FALSE"`
+		BoolTrue      bool            `yaml:"bool_true" env:"BOOL_TRUE"`
+		String        string          `yaml:"string" env:"STRING"`
+		Float32       float32         `yaml:"float32" env:"FLOAT_32"`
+		Float64       float64         `yaml:"float64" env:"FLOAT_64"`
+		Int8          int8            `yaml:"int8" env:"INT_8"`
+		Uint8         uint8           `yaml:"uint8" env:"UINT_8"`
+		Int16         int16           `yaml:"int16" env:"INT_16"`
+		Uint16        uint16          `yaml:"uint16" env:"UINT_16"`
+		Int32         int32           `yaml:"int32" env:"INT_32"`
+		Uint32        uint32          `yaml:"uint32" env:"UINT_32"`
+		Int64         int64           `yaml:"int64" env:"INT_64"`
+		Uint64        uint64          `yaml:"uint64" env:"UINT_64"`
+		PtrUint64     *uint64         `yaml:"ptr-uint64" env:"PTR_UINT_64"`
+		PtrUint64Null *uint64         `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		MapFoo        map[string]*Foo `yaml:"map-foo"`
+		SliceFoo      []Foo           `yaml:"slice-foo"`
+		ArrayFoo      [1]Foo          `yaml:"array-foo"`
+		Map2D         Map2D           `yaml:"map-2d"`
 	}
 	t.Setenv("BOOL_FALSE", "false")
 	t.Setenv("BOOL_TRUE", "true")
@@ -817,6 +841,7 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("UINT_64", "1")
 	t.Setenv("PTR_UINT_64", "1")
 	t.Setenv("PTR_UINT_64_NULL", "null")
+	t.Setenv("FOO", "bar")
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
 bool_true: false
@@ -833,6 +858,20 @@ int64: 0
 uint64: 0
 ptr-uint64: 0
 ptr-uint64-null: 0
+map-foo:
+  key:
+    foo: fuzz
+slice-foo:
+  - foo: fuzz
+  - foo: fuzz
+array-foo:
+  - foo: fuzz
+map-2d:
+  foo:
+    bar: bazz
+    muzz: tazz
+  kraz:
+    fraz: sazz
 `)
 	require.NoError(t, err)
 	require.Equal(t, false, c.BoolFalse)
@@ -850,6 +889,13 @@ ptr-uint64-null: 0
 	require.Equal(t, uint64(1), c.Uint64)
 	require.Equal(t, uint64(1), *c.PtrUint64)
 	require.Nil(t, c.PtrUint64Null)
+	require.Equal(t, map[string]*Foo{"key": {Foo: "bar"}}, c.MapFoo)
+	require.Equal(t, []Foo{{Foo: "bar"}, {Foo: "bar"}}, c.SliceFoo)
+	require.Equal(t, [1]Foo{{Foo: "bar"}}, c.ArrayFoo)
+	require.Equal(t, Map2D{
+		"foo":  {"bar": "bazz", "muzz": "tazz"},
+		"kraz": {"fraz": "sazz"},
+	}, c.Map2D)
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {
