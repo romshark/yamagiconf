@@ -68,7 +68,7 @@ func LoadFile[T any](yamlFilePath string, config *T) error {
 	if err != nil {
 		return fmt.Errorf("reading file %q: %w", yamlFilePath, err)
 	}
-	return Load[T, []byte](yamlSrcBytes, config)
+	return Load(yamlSrcBytes, config)
 }
 
 // Load reads and validates the configuration of type T from yamlSource.
