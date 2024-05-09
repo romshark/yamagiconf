@@ -1,3 +1,5 @@
+![yamagiconf](https://github.com/romshark/yamagiconf/assets/9574743/9d4f5b77-a461-47b2-8f6f-65194755b4f1)
+
 <a href="https://pkg.go.dev/github.com/romshark/yamagiconf">
     <img src="https://godoc.org/github.com/romshark/yamagiconf?status.svg" alt="GoDoc">
 </a>
