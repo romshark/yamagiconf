@@ -27,7 +27,7 @@ an error annotated with line and column in the YAML file if necessary.
   allows only `true` and `false`.
 - Forbids the use of `~` and `Null`, allows only `null` for nilables.
 - Forbids assigning `null` to non-nilables (which normally would assign zero value).
-- Requires `"yaml"` struct tags throught your configuration struct type.
+- Requires `"yaml"` struct tags throughout your configuration struct type.
 - Requires `"env"` struct tags to be POSIX-style and
   forbids any non-primitive env var fields.
 - Forbids recursive Go types.
