@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -21,6 +22,7 @@ import (
 
 // Errors, including type-specific errors.
 var (
+	ErrNilConfig            = errors.New("cannot load into nil config")
 	ErrEmptyFile            = errors.New("empty file")
 	ErrMalformedYAML        = errors.New("malformed YAML")
 	ErrMissingYAMLTag       = errors.New("missing yaml struct tag")
@@ -39,7 +41,7 @@ var (
 	ErrUnsupportedPtrType = errors.New("unsupported pointer type")
 )
 
-// Load reads and validates a YAML configuration file.
+// LoadFile reads and validates the configuration of type T from a YAML file.
 // Will return an error if:
 //
 //   - T contains any struct field without a "yaml" struct tag.
@@ -55,47 +57,59 @@ var (
 //   - the yaml file contains boolean literals other than `true` and `false`.
 //   - the yaml file contains null values other than `null` (`~`, etc.).
 //   - the yaml file assigns `null` to a non-pointer Go type.
-func Load[T any](yamlFilePath string) (T, error) {
-	var config T
-	configType := reflect.TypeOf(config)
-
-	if err := validateType[T](); err != nil {
-		return config, err
+func LoadFile[T any](yamlFilePath string, config *T) error {
+	if config == nil {
+		return ErrNilConfig
 	}
 
 	yamlSrcBytes, err := os.ReadFile(yamlFilePath)
 	if err != nil {
-		return config, fmt.Errorf("reading file %q: %w", yamlFilePath, err)
+		return fmt.Errorf("reading file %q: %w", yamlFilePath, err)
 	}
-	if string(yamlSrcBytes) == "" {
-		return config, ErrEmptyFile
+	return Load[T, []byte](yamlSrcBytes, config)
+}
+
+// Load reads and validates the configuration of type T from yamlSource.
+// Load behaves similar to LoadFile.
+func Load[T any, S string | []byte](yamlSource S, config *T) error {
+	if config == nil {
+		return ErrNilConfig
+	}
+	if len(yamlSource) == 0 {
+		return ErrEmptyFile
 	}
 
-	dec := yaml.NewDecoder(bytes.NewReader(yamlSrcBytes))
+	if err := ValidateType[T](); err != nil {
+		return err
+	}
+
+	dec := newDecoderYAML(yamlSource)
 	dec.KnownFields(true)
-	err = dec.Decode(&config)
+	err := dec.Decode(config)
 	if err != nil {
-		return config, fmt.Errorf("%w: %w", ErrMalformedYAML, err)
+		return fmt.Errorf("%w: %w", ErrMalformedYAML, err)
 	}
 
 	var rootNode yaml.Node
-	if err := yaml.Unmarshal(yamlSrcBytes, &rootNode); err != nil {
-		return config, fmt.Errorf("decoding yaml structure: %w", err)
+	if err := newDecoderYAML(yamlSource).Decode(&rootNode); err != nil {
+		return fmt.Errorf("decoding yaml structure: %w", err)
 	}
+
+	configType := reflect.TypeOf(config).Elem()
 
 	err = validateYAMLValues("", configType.Name(), configType, rootNode.Content[0])
 	if err != nil {
-		return config, err
+		return err
 	}
 
-	err = unmarshalEnv(configType.Name(), "", reflect.ValueOf(&config).Elem())
+	err = unmarshalEnv(configType.Name(), "", reflect.ValueOf(config).Elem())
 	if err != nil {
-		return config, err
+		return err
 	}
 
 	err = invokeValidateRecursively(reflect.ValueOf(config), rootNode.Content[0])
 	if err != nil {
-		return config, err
+		return err
 	}
 
 	err = validator.New(
@@ -107,13 +121,12 @@ func Load[T any](yamlFilePath string) (T, error) {
 			line, column, yamlTag := mustFindLocationByValidatorNamespace[T](
 				err.StructNamespace(), &rootNode,
 			)
-			return config, fmt.Errorf("at %d:%d: %q %w: %q",
+			return fmt.Errorf("at %d:%d: %q %w: %q",
 				line, column, yamlTag, ErrValidateTagViolation, err.Tag())
 		}
-		return config, err
+		return err
 	}
-
-	return config, err
+	return nil
 }
 
 type Validator interface{ Validate() error }
@@ -192,6 +205,17 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 		}
 	}
 	return nil
+}
+
+func newDecoderYAML[S string | []byte](s S) *yaml.Decoder {
+	var reader io.Reader
+	switch s := any(s).(type) {
+	case []byte:
+		reader = bytes.NewReader(s)
+	case string:
+		reader = strings.NewReader(s)
+	}
+	return yaml.NewDecoder(reader)
 }
 
 // unmarshalEnv traverses v and overwrites the values when an `env` struct tag
@@ -481,9 +505,13 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 	return nil
 }
 
-// validateType returns an error if T is recursive or contains
-// any fields that are missing the `yaml` struct tag.
-func validateType[T any]() error {
+// ValidateType returns an error if T is recursive, contains
+// any fields that are missing the `yaml` struct tag, contains
+// any fields with malformed `env` struct tag, or contains
+// any unsupported types (signed and unsigned integers with unspecified
+// width, interface (including `any`), function, channel, unsafe.Pointer,
+// pointer to pointer, pointer to slice and pointer to map).
+func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
