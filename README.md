@@ -23,20 +23,21 @@ an error annotated with line and column in the YAML file if necessary.
 
 ## (anti-)Features
 
-- Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
+- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
   allows only `true` and `false`.
-- Forbids the use of `~` and `Null`, allows only `null` for nilables.
-- Forbids assigning `null` to non-nilables (which normally would assign zero value).
-- Requires `"yaml"` struct tags throughout your configuration struct type.
-- Requires `"env"` struct tags to be POSIX-style and
+- 🚫 Forbids the use of `~` and `Null`, allows only `null` for nilables.
+- 🚫 Forbids assigning `null` to non-nilables (which normally would assign zero value).
+- ❗️ Requires `"yaml"` struct tags throughout your configuration struct type.
+- ❗️ Requires `"env"` struct tags to be POSIX-style and
   forbids any non-primitive env var fields.
-- Allows only primitive fields with the `env` tag to be overwritten with env vars.
-- Forbids recursive Go types.
-- Forbids the use of `any`, `int` & `uint` (unspecified width), and other types.
+- ❗️ Allows only primitive fields with the `env` tag to be overwritten with env vars.
+- 🚫 Forbids recursive Go types.
+- 🚫 Forbids the use of `any`, `int` & `uint` (unspecified width), and other types.
   Only maps, slices, arrays and deterministic primitives are allowed.
-- Requires fields specified in the configuration type to be present in the YAML file.
+- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
+- 🚫 Forbids fields in the YAML file that aren't specified by the Go type.
 - Reports errors by `line:column` when it can.
-- If any type within your configuration struct implements the `Validate` interface,
+- 🪄 If any type within your configuration struct implements the `Validate` interface,
   then its validation method will be called.
   If it returns an error - the error will be reported.
   Keep your validation logic close to your configuration type definitions.
