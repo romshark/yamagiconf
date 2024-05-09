@@ -12,7 +12,7 @@
 
 The heavily opinionated **YA**ML **Magi**c **Conf**iguration framework for Go
 keeps your configs simple and consistent
-by allowing only a subset of YAML and enforcing some restrictions to the Go type.
+by being *more restrictive than your regular YAML parser* allowing only a subset of YAML and enforcing some restrictions to the target Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell), and you can't stand complex configurations then yamagiconf is for you!
