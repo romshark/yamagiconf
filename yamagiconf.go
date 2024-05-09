@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"gopkg.in/yaml.v3"
@@ -133,8 +134,6 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 type Validator interface{ Validate() error }
 
-var typeValidator = reflect.TypeOf((*Validator)(nil)).Elem()
-
 // asValidator returns nil if v doesn't implement the Validator interface
 // neither as a copy- nor as a pointer receiver.
 func asValidator(v reflect.Value) Validator {
@@ -179,8 +178,6 @@ func asTextUnmarshaler(v reflect.Value) encoding.TextUnmarshaler {
 	return nil
 }
 
-var typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-
 func implementsTextUnmarshaler(t reflect.Type) bool {
 	if t.Implements(typeTextUnmarshaler) {
 		return true
@@ -189,6 +186,12 @@ func implementsTextUnmarshaler(t reflect.Type) bool {
 	}
 	return false
 }
+
+var (
+	typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	typeValidator       = reflect.TypeOf((*Validator)(nil)).Elem()
+	typeTimeDuration    = reflect.TypeOf(time.Duration(0))
+)
 
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
@@ -278,9 +281,20 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		if !ok {
 			return nil
 		}
-		if err := v.UnmarshalText([]byte(env)); err != nil {
+		return v.UnmarshalText([]byte(env))
+	}
+
+	if v.Type() == typeTimeDuration {
+		env, ok := os.LookupEnv(envVar)
+		if !ok {
+			return nil
+		}
+		d, err := time.ParseDuration(env)
+		if err != nil {
 			return err
 		}
+		v.SetInt(int64(d))
+		return nil
 	}
 
 	switch tp.Kind() {

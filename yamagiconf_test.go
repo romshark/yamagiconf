@@ -826,6 +826,7 @@ func TestLoadEnvVar(t *testing.T) {
 		ArrayFoo      [1]Foo          `yaml:"array-foo"`
 		Map2D         Map2D           `yaml:"map-2d"`
 		Time          time.Time       `yaml:"time" env:"TIME"`
+		Duration      time.Duration   `yaml:"duration" env:"DURATION"`
 	}
 	t.Setenv("BOOL_FALSE", "false")
 	t.Setenv("BOOL_TRUE", "true")
@@ -844,6 +845,7 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("PTR_UINT_64_NULL", "null")
 	t.Setenv("FOO", "bar")
 	t.Setenv("TIME", "2000-10-10T10:10:10Z")
+	t.Setenv("DURATION", "30m")
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
 bool_true: false
@@ -875,6 +877,7 @@ map-2d:
   kraz:
     fraz: sazz
 time: 2024-01-01T01:01:01Z
+duration: 10s
 `)
 	require.NoError(t, err)
 	require.Equal(t, false, c.BoolFalse)
@@ -900,25 +903,28 @@ time: 2024-01-01T01:01:01Z
 		"kraz": {"fraz": "sazz"},
 	}, c.Map2D)
 	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
+	require.Equal(t, 30*time.Minute, c.Duration)
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {
 	type TestConfig struct {
-		BoolFalse     bool    `yaml:"bool_false" env:"BOOL_FALSE"`
-		BoolTrue      bool    `yaml:"bool_true" env:"BOOL_TRUE"`
-		String        string  `yaml:"string" env:"STRING"`
-		Float32       float32 `yaml:"float32" env:"FLOAT_32"`
-		Float64       float64 `yaml:"float64" env:"FLOAT_64"`
-		Int8          int8    `yaml:"int8" env:"INT_8"`
-		Uint8         uint8   `yaml:"uint8" env:"UINT_8"`
-		Int16         int16   `yaml:"int16" env:"INT_16"`
-		Uint16        uint16  `yaml:"uint16" env:"UINT_16"`
-		Int32         int32   `yaml:"int32" env:"INT_32"`
-		Uint32        uint32  `yaml:"uint32" env:"UINT_32"`
-		Int64         int64   `yaml:"int64" env:"INT_64"`
-		Uint64        uint64  `yaml:"uint64" env:"UINT_64"`
-		PtrUint64     *uint64 `yaml:"ptr-uint64" env:"PTR_UINT_64"`
-		PtrUint64Null *uint64 `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		BoolFalse     bool          `yaml:"bool_false" env:"BOOL_FALSE"`
+		BoolTrue      bool          `yaml:"bool_true" env:"BOOL_TRUE"`
+		String        string        `yaml:"string" env:"STRING"`
+		Float32       float32       `yaml:"float32" env:"FLOAT_32"`
+		Float64       float64       `yaml:"float64" env:"FLOAT_64"`
+		Int8          int8          `yaml:"int8" env:"INT_8"`
+		Uint8         uint8         `yaml:"uint8" env:"UINT_8"`
+		Int16         int16         `yaml:"int16" env:"INT_16"`
+		Uint16        uint16        `yaml:"uint16" env:"UINT_16"`
+		Int32         int32         `yaml:"int32" env:"INT_32"`
+		Uint32        uint32        `yaml:"uint32" env:"UINT_32"`
+		Int64         int64         `yaml:"int64" env:"INT_64"`
+		Uint64        uint64        `yaml:"uint64" env:"UINT_64"`
+		PtrUint64     *uint64       `yaml:"ptr-uint64" env:"PTR_UINT_64"`
+		PtrUint64Null *uint64       `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		Time          time.Time     `yaml:"time" env:"TIME"`
+		Duration      time.Duration `yaml:"duration" env:"DURATION"`
 	}
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
@@ -936,6 +942,8 @@ int64: 0
 uint64: 0
 ptr-uint64: 0
 ptr-uint64-null: null
+time: 2024-01-01T01:01:01Z
+duration: 10s
 `)
 	require.NoError(t, err)
 	require.Equal(t, true, c.BoolFalse)
@@ -953,6 +961,8 @@ ptr-uint64-null: null
 	require.Equal(t, uint64(0), c.Uint64)
 	require.Equal(t, uint64(0), *c.PtrUint64)
 	require.Nil(t, c.PtrUint64Null)
+	require.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), c.Time)
+	require.Equal(t, 10*time.Second, c.Duration)
 }
 
 func TestLoadErrInvalidEnvVar(t *testing.T) {
