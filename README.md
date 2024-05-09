@@ -17,6 +17,10 @@ by being *more restrictive than your regular YAML parser* allowing only a subset
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell), and you can't stand complex configurations then yamagiconf is for you!
 
+It's magic because it uses [reflect](https://pkg.go.dev/reflect) to find recursively all
+values of types that implement `interface { Validate() error }` and calls them reporting
+an error annotated with line and column in the YAML file if necessary.
+
 ## (anti-)Features
 
 - Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
