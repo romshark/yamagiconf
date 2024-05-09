@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/romshark/yamagiconf"
@@ -33,6 +34,7 @@ func TestLoadFile(t *testing.T) {
 		MapIntInt        map[int16]int16   `yaml:"map-int-int"`
 		SliceStr         []string          `yaml:"slice-str"`
 		SliceInt         []int64           `yaml:"slice-int"`
+		Time             time.Time         `yaml:"time"`
 	}
 	type TestConfig struct {
 		Embedded `yaml:"embedded"`
@@ -63,6 +65,7 @@ embedded:
   map-int-int:
     2: 4
     4: 8
+  time: 2024-05-09T20:19:22Z
 enabled: true`), 0o664)
 	require.NoError(t, err)
 
@@ -81,6 +84,7 @@ enabled: true`), 0o664)
 	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapIntInt)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt)
+	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
 }
 
 func TestLoadErrMissingYAMLTag(t *testing.T) {

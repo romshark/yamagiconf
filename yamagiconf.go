@@ -7,6 +7,7 @@ package yamagiconf
 
 import (
 	"bytes"
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
@@ -155,6 +156,17 @@ func asValidator(v reflect.Value) Validator {
 	return nil
 }
 
+var typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
+func implementsTextUnmarshaler(t reflect.Type) bool {
+	if t.Implements(typeTextUnmarshaler) {
+		return true
+	} else if t.Kind() != reflect.Pointer {
+		return reflect.PointerTo(t).Implements(typeTextUnmarshaler)
+	}
+	return false
+}
+
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
 // Assumes that T was previously checked with checkYAMLValues.
@@ -173,6 +185,9 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 
 	switch tp.Kind() {
 	case reflect.Struct:
+		if implementsTextUnmarshaler(tp) {
+			return nil
+		}
 		for i := range tp.NumField() {
 			fv := v.Field(i)
 			yamlTag := getYAMLFieldName(tp.Field(i).Tag)
@@ -446,6 +461,9 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 
 	switch tp.Kind() {
 	case reflect.Struct:
+		if implementsTextUnmarshaler(tp) {
+			return nil
+		}
 		for i := range tp.NumField() {
 			f := tp.Field(i)
 			yamlTag := getYAMLFieldName(f.Tag)
@@ -524,6 +542,9 @@ func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
+		if implementsTextUnmarshaler(tp) {
+			return nil
+		}
 		for i := range tp.NumField() {
 			f := tp.Field(i)
 			yamlTag := getYAMLFieldName(f.Tag)
