@@ -51,6 +51,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- Supports `encoding.TextUnmarshaler` and `time.Duration`.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
 	struct validation tags.
+	- Implements `env` struct tags to overwrite fields from env vars if provided.
 
 ## Example
 
