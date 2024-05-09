@@ -825,6 +825,7 @@ func TestLoadEnvVar(t *testing.T) {
 		SliceFoo      []Foo           `yaml:"slice-foo"`
 		ArrayFoo      [1]Foo          `yaml:"array-foo"`
 		Map2D         Map2D           `yaml:"map-2d"`
+		Time          time.Time       `yaml:"time" env:"TIME"`
 	}
 	t.Setenv("BOOL_FALSE", "false")
 	t.Setenv("BOOL_TRUE", "true")
@@ -842,6 +843,7 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("PTR_UINT_64", "1")
 	t.Setenv("PTR_UINT_64_NULL", "null")
 	t.Setenv("FOO", "bar")
+	t.Setenv("TIME", "2000-10-10T10:10:10Z")
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
 bool_true: false
@@ -872,6 +874,7 @@ map-2d:
     muzz: tazz
   kraz:
     fraz: sazz
+time: 2024-01-01T01:01:01Z
 `)
 	require.NoError(t, err)
 	require.Equal(t, false, c.BoolFalse)
@@ -896,6 +899,7 @@ map-2d:
 		"foo":  {"bar": "bazz", "muzz": "tazz"},
 		"kraz": {"fraz": "sazz"},
 	}, c.Map2D)
+	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {

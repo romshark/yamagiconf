@@ -157,6 +157,28 @@ func asValidator(v reflect.Value) Validator {
 	return nil
 }
 
+// asTextUnmarshaler returns nil if v doesn't implement the encoding.TextUnmarshaler
+// interface neither as a copy- nor as a pointer receiver.
+func asTextUnmarshaler(v reflect.Value) encoding.TextUnmarshaler {
+	if !v.IsValid() {
+		return nil
+	}
+	tp := v.Type()
+	if tp.Kind() == reflect.Pointer && v.IsNil() {
+		return nil
+	}
+	if v.CanInterface() && tp.Implements(typeTextUnmarshaler) {
+		return v.Interface().(encoding.TextUnmarshaler)
+	}
+	if v.CanAddr() {
+		vp := v.Addr()
+		if vp.CanInterface() && vp.Type().Implements(typeTextUnmarshaler) {
+			return vp.Interface().(encoding.TextUnmarshaler)
+		}
+	}
+	return nil
+}
+
 var typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 func implementsTextUnmarshaler(t reflect.Type) bool {
@@ -248,6 +270,16 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 				return nil
 			}
 			tp, v = tp.Elem(), v.Elem()
+		}
+	}
+
+	if v := asTextUnmarshaler(v); v != nil {
+		env, ok := os.LookupEnv(envVar)
+		if !ok {
+			return nil
+		}
+		if err := v.UnmarshalText([]byte(env)); err != nil {
+			return err
 		}
 	}
 
@@ -669,6 +701,8 @@ func validateEnvField(f reflect.StructField) error {
 	case k == reflect.Pointer && kindIsPrimitive(f.Type.Elem().Kind()):
 		// Pointer to primitve
 		return nil
+	case implementsTextUnmarshaler(f.Type):
+		return nil
 	}
 	return fmt.Errorf("env var of unsupported type: %s", f.Type.String())
 }
@@ -682,8 +716,6 @@ func kindIsPrimitive(k reflect.Kind) bool {
 	case reflect.String,
 		reflect.Float32,
 		reflect.Float64,
-		reflect.Int,
-		reflect.Uint,
 		reflect.Int8,
 		reflect.Uint8,
 		reflect.Int16,
