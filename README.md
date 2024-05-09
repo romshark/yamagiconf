@@ -45,6 +45,8 @@ list:
     bar: valid
 map:
   valid: valid
+secret: 'this will be overwritten from env var SECRET'
+required: 'this must not be empty'
 ```
 
 ```go
@@ -59,11 +61,18 @@ import (
 type Config struct {
 	List []Struct                            `yaml:"list"`
 	Map  map[ValidatedString]ValidatedString `yaml:"map"`
+
+	// Secret will be overwritten if env var SECRET is set.
+	Secret string `yaml:"secret" env:"SECRET"`
+
+	// See https://github.com/go-playground/validator
+	// for all available validation tags
+	Required string `yaml:"required" validate:"required"`
 }
 
 type Struct struct {
-	Foo string `yaml:"foo"`
-	Bar string `yaml:"bar"`
+	Foo string          `yaml:"foo"`
+	Bar ValidatedString `yaml:"bar"`
 }
 
 // Validate will automatically be called by yamagiconf
