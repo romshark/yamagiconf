@@ -30,6 +30,7 @@ an error annotated with line and column in the YAML file if necessary.
 - Requires `"yaml"` struct tags throughout your configuration struct type.
 - Requires `"env"` struct tags to be POSIX-style and
   forbids any non-primitive env var fields.
+- Allows only primitive fields with the `env` tag to be overwritten with env vars.
 - Forbids recursive Go types.
 - Forbids the use of `any`, `int` & `uint` (unspecified width), and other types.
   Only maps, slices, arrays and deterministic primitives are allowed.
