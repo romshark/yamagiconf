@@ -12,12 +12,12 @@
 
 The heavily opinionated **YA**ML **Magi**c **Conf**iguration framework for Go
 keeps your configs simple and consistent
-by being *more restrictive than your regular YAML parser* allowing only a subset of YAML and enforcing some restrictions to the target Go type.
+by being *more restrictive than your regular YAML parser* 🚷 allowing only a subset of YAML and enforcing some restrictions to the target Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell), and you can't stand complex configurations then yamagiconf is for you!
 
-It's magic because it uses [reflect](https://pkg.go.dev/reflect) to find recursively all
+🪄 It's magic because it uses [reflect](https://pkg.go.dev/reflect) to find recursively all
 values of types that implement `interface { Validate() error }` and calls them reporting
 an error annotated with line and column in the YAML file if necessary.
 
