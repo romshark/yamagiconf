@@ -26,7 +26,7 @@ an error annotated with line and column in the YAML file if necessary.
 - Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
   allows only `true` and `false`.
 - Forbids the use of `~` and `Null`, allows only `null` for nilables.
-- Forbids assigning `null` to non-nilables (which is causing them to use their zero value).
+- Forbids assigning `null` to non-nilables (which normally would assign zero value).
 - Requires `"yaml"` struct tags throught your configuration struct type.
 - Requires `"env"` struct tags to be POSIX-style and
   forbids any non-primitive env var fields.
