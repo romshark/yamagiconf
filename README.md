@@ -11,7 +11,8 @@
 # yamagiconf
 
 The heavily opinionated **YA**ML **Magi**c **Conf**iguration framework for Go
-keeps your configs simple and consistent.
+keeps your configs simple and consistent
+by allowing only a subset of YAML and enforcing some restrictions to the Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell), and you can't stand complex configurations then yamagiconf is for you!
@@ -97,8 +98,8 @@ func (v ValidatedString) Validate() error {
 }
 
 func main() {
-	c, err := yamagiconf.Load[Config]("./config.yaml")
-	if err != nil {
+	var c Config
+	if err := yamagiconf.LoadFile("./config.yaml", &c); err != nil {
 		fmt.Println("Whoops, something is wrong with your config!", err)
 	}
 	fmt.Printf("%#v\n", c)
