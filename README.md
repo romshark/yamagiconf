@@ -48,6 +48,9 @@ an error annotated with line and column in the YAML file if necessary.
 	If it returns an error - the error will be reported.
 	Keep your validation logic close to your configuration type definitions.
 	- Reports errors by `line:column` when it can.
+	- Supports `encoding.TextUnmarshaler` and `time.Duration`.
+	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
+	struct validation tags.
 
 ## Example
 
