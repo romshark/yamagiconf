@@ -25,6 +25,7 @@ func LoadSrc[T any](src string) (*T, error) {
 func TestLoadFile(t *testing.T) {
 	type Embedded struct {
 		AnyString        string            `yaml:"any-string"`
+		NotATag          string            `yaml:"not-a-tag"`
 		StrQuotedNull    string            `yaml:"str-quoted-null"`
 		StrDubQuotNull   string            `yaml:"str-doublequoted-null"`
 		StrBlockNull     string            `yaml:"str-block-null"`
@@ -47,6 +48,7 @@ func TestLoadFile(t *testing.T) {
 int32: 42
 embedded:
   any-string: 'any string'
+  not-a-tag: '!tag value'
   str-quoted-null: 'null'
   str-doublequoted-null: "null"
   str-block-null: |
@@ -74,6 +76,7 @@ enabled: true`), 0o664)
 	require.NoError(t, err)
 
 	require.Equal(t, `any string`, c.AnyString)
+	require.Equal(t, `!tag value`, c.NotATag)
 	require.Equal(t, `null`, c.StrQuotedNull)
 	require.Equal(t, `null`, c.StrDubQuotNull)
 	require.Equal(t, "null\n", c.StrBlockNull)
@@ -455,6 +458,58 @@ func TestLoadNullOnNonPointer(t *testing.T) {
 		require.ErrorIs(t, err, yamagiconf.ErrNullOnNonPointer)
 		require.Equal(t,
 			`at 2:9: "uint32" (TestConfig.Uint32): cannot assign null to non-pointer type`,
+			err.Error())
+	})
+}
+
+func TestLoadErrYAMLTagUsed(t *testing.T) {
+	type TestConfig struct {
+		Str string `yaml:"str"`
+	}
+
+	t.Run("str", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("str: !!str NOTOK")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
+		require.Equal(t,
+			`at 1:6: "str" (TestConfig.Str): tag "!!str": avoid using YAML tags`,
+			err.Error())
+	})
+
+	t.Run("custom", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("str: !.custom NOTOK")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
+		require.Equal(t,
+			`at 1:6: "str" (TestConfig.Str): tag "!.custom": avoid using YAML tags`,
+			err.Error())
+	})
+
+	t.Run("custom_at_level_1", func(t *testing.T) {
+		type TestConfig struct {
+			Container struct {
+				Str string `yaml:"str"`
+			} `yaml:"container"`
+		}
+
+		_, err := LoadSrc[TestConfig]("container:\n  str: !.custom NOTOK")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
+		require.Equal(t,
+			`at 2:8: "str" (TestConfig.Container.Str): tag "!.custom": `+
+				`avoid using YAML tags`,
+			err.Error())
+	})
+
+	t.Run("custom_at_level_1_map", func(t *testing.T) {
+		type TestConfig struct {
+			Container struct {
+				Map map[string]string `yaml:"map"`
+			} `yaml:"container"`
+		}
+
+		_, err := LoadSrc[TestConfig]("container:\n  map:\n    key: !:custom value")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
+		require.Equal(t,
+			`at 3:10: "map" (TestConfig.Container.Map["key"]): tag "!:custom": `+
+				`avoid using YAML tags`,
 			err.Error())
 	})
 }

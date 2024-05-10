@@ -38,6 +38,7 @@ var (
 	ErrBadNullLiteral = errors.New("must be null, " +
 		"any other variants of null are not supported")
 	ErrNullOnNonPointer   = errors.New("cannot assign null to non-pointer type")
+	ErrYAMLTagUsed        = errors.New("avoid using YAML tags")
 	ErrRecursiveType      = errors.New("recursive type")
 	ErrUnsupportedType    = errors.New("unsupported type")
 	ErrUnsupportedPtrType = errors.New("unsupported pointer type")
@@ -60,6 +61,7 @@ var (
 //   - the yaml file contains boolean literals other than `true` and `false`.
 //   - the yaml file contains null values other than `null` (`~`, etc.).
 //   - the yaml file assigns `null` to a non-pointer Go type.
+//   - the yaml file contains any YAML tags.
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrNilConfig
@@ -557,6 +559,9 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 }
 
 func validateValue(tp reflect.Type, node *yaml.Node) error {
+	if node.Style == yaml.TaggedStyle {
+		return fmt.Errorf("tag %q: %w", node.Tag, ErrYAMLTagUsed)
+	}
 	kind := tp.Kind()
 	if kind == reflect.String && node.Value == "null" {
 		switch node.Style {
