@@ -483,6 +483,14 @@ func TestLoadErrYAMLTagUsed(t *testing.T) {
 			err.Error())
 	})
 
+	t.Run("custom_novalue", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("str: !0")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
+		require.Equal(t,
+			`at 1:6: "str" (TestConfig.Str): tag "!0": avoid using YAML tags`,
+			err.Error())
+	})
+
 	t.Run("custom_at_level_1", func(t *testing.T) {
 		type TestConfig struct {
 			Container struct {
