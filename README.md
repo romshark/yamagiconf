@@ -41,7 +41,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids the use of `~` and `Null`, allows only `null` for nilables.
 	- 🚫 Forbids assigning `null` to non-nilables (which normally would assign zero value).
 	- 🚫 Forbids fields in the YAML file that aren't specified by the Go type.
-	- 🚫 Forbids the use YAML tags.
+	- 🚫 Forbids the use of [YAML tags](https://yaml.org/spec/1.2.2/#3212-tags).
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
