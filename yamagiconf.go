@@ -102,12 +102,17 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 	configType := reflect.TypeOf(config).Elem()
 
-	err = validateYAMLValues("", configType.Name(), configType, rootNode.Content[0])
+	configTypeName := configType.Name()
+	if configTypeName == "" {
+		configTypeName = "struct{...}"
+	}
+
+	err = validateYAMLValues("", configTypeName, configType, rootNode.Content[0])
 	if err != nil {
 		return err
 	}
 
-	err = unmarshalEnv(configType.Name(), "", reflect.ValueOf(config).Elem())
+	err = unmarshalEnv(configTypeName, "", reflect.ValueOf(config).Elem())
 	if err != nil {
 		return err
 	}
@@ -673,7 +678,12 @@ func ValidateType[T any]() error {
 	var t T
 	tp := reflect.TypeOf(t)
 	stack = append(stack, tp)
-	return traverse(tp.Name(), tp)
+	n := tp.Name()
+	if n == "" {
+		// Anonymous type
+		n = "struct{...}"
+	}
+	return traverse(n, tp)
 }
 
 func findContentNodeByTag(node *yaml.Node, yamlTag string) *yaml.Node {
