@@ -556,6 +556,15 @@ func TestLoadErr(t *testing.T) {
 		require.Zero(t, c)
 	})
 
+	t.Run("nil_config", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "test-config.yaml")
+		_, err := os.Create(p)
+		require.NoError(t, err)
+		err = yamagiconf.LoadFile[TestConfig](p, nil)
+		require.ErrorIs(t, err, yamagiconf.ErrNilConfig)
+		require.Equal(t, "cannot load into nil config", err.Error())
+	})
+
 	t.Run("invalid_yaml", func(t *testing.T) {
 		// Using tabs is illegal
 		c, err := LoadSrc[TestConfig]("x:\n\ttabs: 'TABS'\n  spaces: 'SPACES'\n")
