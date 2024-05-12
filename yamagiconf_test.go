@@ -38,6 +38,11 @@ func TestLoadFile(t *testing.T) {
 		SliceStr         []string          `yaml:"slice-str"`
 		SliceInt         []int64           `yaml:"slice-int"`
 		Time             time.Time         `yaml:"time"`
+
+		// ignored must be ignored by yamagiconf even though it's
+		// of type int which is unsupported.
+		//lint:ignore U1000 no need to use it.
+		ignored int
 	}
 	type TestConfig struct {
 		Embedded `yaml:"embedded"`
@@ -199,10 +204,10 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Container Container `yaml:"container" env:"NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Container: invalid env struct tag: "+
-				"env var of unsupported type: yamagiconf_test.Container", err.Error())
+			"TestConfig.Container: "+
+				"env var on unsupported type: yamagiconf_test.Container", err.Error())
 	})
 
 	t.Run("on_ptr_struct", func(t *testing.T) {
@@ -213,10 +218,10 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Container *Container `yaml:"container" env:"NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Container: invalid env struct tag: "+
-				"env var of unsupported type: *yamagiconf_test.Container", err.Error())
+			"TestConfig.Container: "+
+				"env var on unsupported type: *yamagiconf_test.Container", err.Error())
 	})
 
 	t.Run("on_slice", func(t *testing.T) {
@@ -224,10 +229,10 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong []string `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Wrong: invalid env struct tag: "+
-				"env var of unsupported type: []string", err.Error())
+			"TestConfig.Wrong: "+
+				"env var on unsupported type: []string", err.Error())
 	})
 }
 
@@ -451,6 +456,49 @@ func TestValidateTypeErrIllegalRootType(t *testing.T) {
 			"at TextUnmarshaler: %s", yamagiconf.ErrIllegalRootType.Error(),
 		), err.Error())
 	})
+}
+
+func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
+	type TestConfig struct {
+		Ok string `yaml:"okay"`
+		//lint:ignore U1000 ignore for testing purposes
+		unexported string `yaml:"unexported"`
+	}
+	err := yamagiconf.ValidateType[TestConfig]()
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagOnUnexported)
+	require.Equal(t, "TestConfig.unexported: yaml tag on unexported field", err.Error())
+}
+
+func TestValidateTypeErrEnvTagOnUnexported(t *testing.T) {
+	type TestConfig struct {
+		Ok string `yaml:"okay"`
+		//lint:ignore U1000 ignore for testing purposes
+		unexported string `env:"ok"`
+	}
+	err := yamagiconf.ValidateType[TestConfig]()
+	require.ErrorIs(t, err, yamagiconf.ErrEnvTagOnUnexported)
+	require.Equal(t, "TestConfig.unexported: env tag on unexported field", err.Error())
+}
+
+func TestValidateTypeErrNoExportedFields(t *testing.T) {
+	type TestConfig struct {
+		//lint:ignore U1000 ignore for testing purposes
+		unexported1 string
+		//lint:ignore U1000 ignore for testing purposes
+		unexported2 string
+	}
+	err := yamagiconf.ValidateType[TestConfig]()
+	require.ErrorIs(t, err, yamagiconf.ErrNoExportedFields)
+	require.Equal(t, "TestConfig: no exported fields", err.Error())
+}
+
+func TestAnonymousStructErrorPath(t *testing.T) {
+	var c struct {
+		MissingYAMLTag string
+	}
+	err := yamagiconf.Load(`ok: ok`, &c)
+	require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
+	require.Equal(t, "struct{...}.MissingYAMLTag: missing yaml struct tag", err.Error())
 }
 
 func TestLoadErrMissingConfig(t *testing.T) {

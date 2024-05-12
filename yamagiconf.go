@@ -24,16 +24,21 @@ import (
 
 // Errors, including type-specific errors.
 var (
-	ErrNilConfig            = errors.New("cannot load into nil config")
-	ErrEmptyFile            = errors.New("empty file")
-	ErrMalformedYAML        = errors.New("malformed YAML")
-	ErrMissingYAMLTag       = errors.New("missing yaml struct tag")
-	ErrInvalidEnvTag        = errors.New("invalid env struct tag")
-	ErrMissingConfig        = errors.New("missing field in config file")
-	ErrInvalidEnvVar        = errors.New("invalid env var")
-	ErrValidation           = errors.New("validation")
-	ErrValidateTagViolation = errors.New("violates validation rule")
-	ErrBadBoolLiteral       = errors.New("must be either false or true, " +
+	ErrNilConfig           = errors.New("cannot load into nil config")
+	ErrEmptyFile           = errors.New("empty file")
+	ErrMalformedYAML       = errors.New("malformed YAML")
+	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
+	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
+	ErrEnvTagOnUnexported  = errors.New("env tag on unexported field")
+	ErrNoExportedFields    = errors.New("no exported fields")
+	ErrInvalidEnvTag       = fmt.Errorf("invalid env struct tag: "+
+		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
+	ErrEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
+	ErrMissingConfig           = errors.New("missing field in config file")
+	ErrInvalidEnvVar           = errors.New("invalid env var")
+	ErrValidation              = errors.New("validation")
+	ErrValidateTagViolation    = errors.New("violates validation rule")
+	ErrBadBoolLiteral          = errors.New("must be either false or true, " +
 		"other variants of boolean literals of YAML are not supported")
 	ErrBadNullLiteral = errors.New("must be null, " +
 		"any other variants of null are not supported")
@@ -57,6 +62,8 @@ var (
 //     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map,
 //     map with non-pointer struct value).
 //   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
+//   - T contains any structs with no exported fields.
+//   - T contains any structs with yaml and/or env tags assigned to unexported fields.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -199,8 +206,12 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 			return nil
 		}
 		for i := range tp.NumField() {
+			ft := tp.Field(i)
+			if !ft.IsExported() {
+				continue
+			}
 			fv := v.Field(i)
-			yamlTag := getYAMLFieldName(tp.Field(i).Tag)
+			yamlTag := getYAMLFieldName(ft.Tag)
 			nodeValue := findContentNodeByTag(node, yamlTag)
 			if err := invokeValidateRecursively(fv, nodeValue); err != nil {
 				return err
@@ -403,8 +414,12 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		v.SetUint(uint64(i))
 	case reflect.Struct:
 		for i := range tp.NumField() {
-			n := tp.Field(i).Tag.Get("env")
-			err := unmarshalEnv(path+"."+tp.Field(i).Name, n, v.Field(i))
+			f := tp.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			n := f.Tag.Get("env")
+			err := unmarshalEnv(path+"."+f.Name, n, v.Field(i))
 			if err != nil {
 				return err
 			}
@@ -504,6 +519,9 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 		}
 		for i := range tp.NumField() {
 			f := tp.Field(i)
+			if !f.IsExported() {
+				continue
+			}
 			yamlTag := getYAMLFieldName(f.Tag)
 			path := path + "." + f.Name
 			contentNode := findContentNodeByTag(node, yamlTag)
@@ -586,16 +604,25 @@ func ValidateType[T any]() error {
 		if implementsInterface[encoding.TextUnmarshaler](tp) {
 			return nil
 		}
+		exportedFields := 0
 		for i := range tp.NumField() {
 			f := tp.Field(i)
 			yamlTag := getYAMLFieldName(f.Tag)
-			if yamlTag == "" {
+			isExported := f.IsExported()
+			if yamlTag == "" && isExported {
 				return fmt.Errorf("%s: %w", path+"."+f.Name, ErrMissingYAMLTag)
+			} else if yamlTag != "" && !isExported {
+				return fmt.Errorf("%s: %w", path+"."+f.Name, ErrYAMLTagOnUnexported)
 			}
 
 			if err := validateEnvField(f); err != nil {
-				return fmt.Errorf("%s: %w: %w", path+"."+f.Name, ErrInvalidEnvTag, err)
+				return fmt.Errorf("%s: %w", path+"."+f.Name, err)
 			}
+
+			if !isExported {
+				continue
+			}
+			exportedFields++
 
 			if f.Type.Kind() == reflect.Pointer {
 				switch f.Type.Elem().Kind() {
@@ -650,8 +677,8 @@ func ValidateType[T any]() error {
 				break LOOP
 			}
 		}
-		if len(stack) > 0 {
-			stack = stack[:len(stack)-1]
+		if exportedFields < 1 {
+			return fmt.Errorf("%s: %w", path, ErrNoExportedFields)
 		}
 		return nil
 	}
@@ -702,13 +729,13 @@ func validateEnvField(f reflect.StructField) error {
 	if !ok {
 		return nil
 	}
-	if n == "" {
-		return errors.New("empty")
+
+	if !f.IsExported() {
+		return ErrEnvTagOnUnexported
 	}
-	if !regexEnvVarPOSIX.MatchString(n) {
-		return fmt.Errorf(
-			"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern,
-		)
+
+	if n == "" || !regexEnvVarPOSIX.MatchString(n) {
+		return ErrInvalidEnvTag
 	}
 	switch k := f.Type.Kind(); {
 	case kindIsPrimitive(k):
@@ -719,7 +746,7 @@ func validateEnvField(f reflect.StructField) error {
 	case implementsInterface[encoding.TextUnmarshaler](f.Type):
 		return nil
 	}
-	return fmt.Errorf("env var of unsupported type: %s", f.Type.String())
+	return fmt.Errorf("%w: %s", ErrEnvVarOnUnsupportedType, f.Type.String())
 }
 
 const regexEnvVarPOSIXPattern = `^[A-Z_][A-Z0-9_]*$`
