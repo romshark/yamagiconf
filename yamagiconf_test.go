@@ -1,6 +1,7 @@
 package yamagiconf_test
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/romshark/yamagiconf"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func LoadSrc[T any](src string) (*T, error) {
@@ -1183,4 +1185,47 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 			"expected uint64: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
+}
+
+type (
+	TextUnmarshaler        struct{ Str string }
+	TextUnmarshalerCopyRcv struct{ Str *string }
+	YAMLUnmarshaler        struct{ Str string }
+)
+
+func (u *TextUnmarshaler) UnmarshalText(d []byte) error {
+	u.Str = string(d)
+	return nil
+}
+
+func (u TextUnmarshalerCopyRcv) UnmarshalText(d []byte) error {
+	*u.Str = string(d)
+	return nil
+}
+
+func (u *YAMLUnmarshaler) UnmarshalYAML(n *yaml.Node) error {
+	u.Str = n.Value
+	return nil
+}
+
+var (
+	_ encoding.TextUnmarshaler = new(TextUnmarshaler)
+	_ encoding.TextUnmarshaler = new(TextUnmarshalerCopyRcv)
+	_ yaml.Unmarshaler         = new(YAMLUnmarshaler)
+)
+
+func TestLoadTextUnmarshaler(t *testing.T) {
+	var u2str string
+	c := struct {
+		U1    TextUnmarshaler        `yaml:"u1"`
+		U2    TextUnmarshalerCopyRcv `yaml:"u2"`
+		U1Ptr *TextUnmarshaler       `yaml:"u1_ptr"`
+	}{
+		U2: TextUnmarshalerCopyRcv{Str: &u2str},
+	}
+	err := yamagiconf.Load("u1: t1\nu2: t2\nu1_ptr: t3", &c)
+	require.NoError(t, err)
+	require.Equal(t, "t1", c.U1.Str)
+	require.Equal(t, "t2", *c.U2.Str)
+	require.Equal(t, "t3", c.U1Ptr.Str)
 }
