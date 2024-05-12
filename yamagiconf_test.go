@@ -105,7 +105,7 @@ func TestLoadErrMissingYAMLTag(t *testing.T) {
 		}
 		_, err := LoadSrc[TestConfig]("has-yaml-tag: 'OK'\nNoYAMLTag: 'NO'\n")
 		require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
-		require.Equal(t, "TestConfig.NoYAMLTag: missing yaml struct tag", err.Error())
+		require.Equal(t, "at TestConfig.NoYAMLTag: missing yaml struct tag", err.Error())
 	})
 	t.Run("level_1", func(t *testing.T) {
 		type Foo struct{ NoYAMLTag string }
@@ -115,7 +115,9 @@ func TestLoadErrMissingYAMLTag(t *testing.T) {
 		}
 		_, err := LoadSrc[TestConfig]("has-yaml-tag: 'OK'\nfoo:\n  NoYAMLTag: 'NO'\n")
 		require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
-		require.Equal(t, "TestConfig.Foo.NoYAMLTag: missing yaml struct tag", err.Error())
+		require.Equal(t,
+			"at TestConfig.Foo.NoYAMLTag: missing yaml struct tag",
+			err.Error())
 	})
 
 	t.Run("slice_item", func(t *testing.T) {
@@ -130,7 +132,7 @@ slice:
   - NoYAMLTag: NO
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
-		require.Equal(t, "TestConfig.Slice.NoYAMLTag: "+
+		require.Equal(t, "at TestConfig.Slice.NoYAMLTag: "+
 			"missing yaml struct tag", err.Error())
 	})
 
@@ -146,7 +148,7 @@ slice:
   - NoYAMLTag: NO
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
-		require.Equal(t, "TestConfig.Array.NoYAMLTag: "+
+		require.Equal(t, "at TestConfig.Array.NoYAMLTag: "+
 			"missing yaml struct tag", err.Error())
 	})
 }
@@ -158,7 +160,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
-		require.Equal(t, "TestConfig.Wrong: invalid env struct tag: "+
+		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -168,7 +170,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
-		require.Equal(t, "TestConfig.Wrong: invalid env struct tag: "+
+		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -178,7 +180,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
-		require.Equal(t, "TestConfig.Wrong: invalid env struct tag: "+
+		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -192,7 +194,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("container:\n  wrong: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvTag)
 		require.Equal(t,
-			"TestConfig.Container.Wrong: invalid env struct tag: "+
+			"at TestConfig.Container.Wrong: invalid env struct tag: "+
 				"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -206,7 +208,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Container: "+
+			"at TestConfig.Container: "+
 				"env var on unsupported type: yamagiconf_test.Container", err.Error())
 	})
 
@@ -220,7 +222,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Container: "+
+			"at TestConfig.Container: "+
 				"env var on unsupported type: *yamagiconf_test.Container", err.Error())
 	})
 
@@ -231,7 +233,7 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
 		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Wrong: "+
+			"at TestConfig.Wrong: "+
 				"env var on unsupported type: []string", err.Error())
 	})
 }
@@ -281,27 +283,27 @@ recurs:
 	t.Run("through_container_ptr", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurThroughContainerPtr](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrRecursiveType)
-		require.Equal(t, "TestConfigRecurThroughContainerPtr.Container.Recurs: "+
+		require.Equal(t, "at TestConfigRecurThroughContainerPtr.Container.Recurs: "+
 			"recursive type", err.Error())
 	})
 	t.Run("ptr_through_container", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurPtrThroughContainer](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrRecursiveType)
-		require.Equal(t, "TestConfigRecurPtrThroughContainer.Container.Recurs: "+
+		require.Equal(t, "at TestConfigRecurPtrThroughContainer.Container.Recurs: "+
 			"recursive type", err.Error())
 	})
 
 	t.Run("through_slice", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurThroughSlice](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrRecursiveType)
-		require.Equal(t, "TestConfigRecurThroughSlice.Recurs: "+
+		require.Equal(t, "at TestConfigRecurThroughSlice.Recurs: "+
 			"recursive type", err.Error())
 	})
 
 	t.Run("ptr_through_slice", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurPtrThroughSlice](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrRecursiveType)
-		require.Equal(t, "TestConfigRecurPtrThroughSlice.Recurs: "+
+		require.Equal(t, "at TestConfigRecurPtrThroughSlice.Recurs: "+
 			"recursive type", err.Error())
 	})
 }
@@ -327,7 +329,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.Int: unsupported type: int, "+
+		require.Equal(t, "at TestConfig.Int: unsupported type: int, "+
 			"use integer type with specified width, "+
 			"such as int32 or int64 instead of int", err.Error())
 	})
@@ -339,7 +341,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedPtrType)
-		require.Equal(t, "TestConfig.PtrPtr: unsupported pointer type", err.Error())
+		require.Equal(t, "at TestConfig.PtrPtr: unsupported pointer type", err.Error())
 	})
 
 	t.Run("ptr_slice", func(t *testing.T) {
@@ -349,7 +351,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedPtrType)
-		require.Equal(t, "TestConfig.PtrSlice: unsupported pointer type", err.Error())
+		require.Equal(t, "at TestConfig.PtrSlice: unsupported pointer type", err.Error())
 	})
 
 	t.Run("ptr_map", func(t *testing.T) {
@@ -359,7 +361,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedPtrType)
-		require.Equal(t, "TestConfig.PtrMap: unsupported pointer type", err.Error())
+		require.Equal(t, "at TestConfig.PtrMap: unsupported pointer type", err.Error())
 	})
 
 	t.Run("channel", func(t *testing.T) {
@@ -369,7 +371,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.Chan: unsupported type: chan int", err.Error())
+		require.Equal(t, "at TestConfig.Chan: unsupported type: chan int", err.Error())
 	})
 
 	t.Run("func", func(t *testing.T) {
@@ -379,7 +381,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.Func: unsupported type: func()", err.Error())
+		require.Equal(t, "at TestConfig.Func: unsupported type: func()", err.Error())
 	})
 
 	t.Run("unsafe_pointer", func(t *testing.T) {
@@ -389,7 +391,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.UnsafePointer: "+
+		require.Equal(t, "at TestConfig.UnsafePointer: "+
 			"unsupported type: unsafe.Pointer", err.Error())
 	})
 
@@ -400,7 +402,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.Interface: "+
+		require.Equal(t, "at TestConfig.Interface: "+
 			"unsupported type: interface { Write() ([]uint8, int) }", err.Error())
 	})
 
@@ -411,7 +413,7 @@ recurs:
 
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t, "TestConfig.Anything: "+
+		require.Equal(t, "at TestConfig.Anything: "+
 			"unsupported type: interface {}", err.Error())
 	})
 
@@ -426,7 +428,7 @@ recurs:
 		_, err := LoadSrc[TestConfig](yamlContents)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
 		require.Equal(t,
-			"TestConfig.Map: unsupported type: yamagiconf_test.Foo, "+
+			"at TestConfig.Map: unsupported type: yamagiconf_test.Foo, "+
 				"use pointer to struct as map value",
 			err.Error())
 	})
@@ -466,7 +468,9 @@ func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagOnUnexported)
-	require.Equal(t, "TestConfig.unexported: yaml tag on unexported field", err.Error())
+	require.Equal(t,
+		"at TestConfig.unexported: yaml tag on unexported field",
+		err.Error())
 }
 
 func TestValidateTypeErrYAmlTagRedefined(t *testing.T) {
@@ -489,7 +493,9 @@ func TestValidateTypeErrEnvTagOnUnexported(t *testing.T) {
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrEnvTagOnUnexported)
-	require.Equal(t, "TestConfig.unexported: env tag on unexported field", err.Error())
+	require.Equal(t,
+		"at TestConfig.unexported: env tag on unexported field",
+		err.Error())
 }
 
 func TestValidateTypeErrNoExportedFields(t *testing.T) {
@@ -501,7 +507,7 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrNoExportedFields)
-	require.Equal(t, "TestConfig: no exported fields", err.Error())
+	require.Equal(t, "at TestConfig: no exported fields", err.Error())
 }
 
 func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
@@ -583,7 +589,9 @@ func TestAnonymousStructErrorPath(t *testing.T) {
 	}
 	err := yamagiconf.Load(`ok: ok`, &c)
 	require.ErrorIs(t, err, yamagiconf.ErrMissingYAMLTag)
-	require.Equal(t, "struct{...}.MissingYAMLTag: missing yaml struct tag", err.Error())
+	require.Equal(t,
+		"at struct{...}.MissingYAMLTag: missing yaml struct tag",
+		err.Error())
 }
 
 func TestLoadErrMissingConfig(t *testing.T) {
@@ -594,7 +602,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 	_, err := LoadSrc[TestConfig]("ok: 'OK'")
 	require.ErrorIs(t, err, yamagiconf.ErrMissingConfig)
 	require.Equal(t,
-		`config "missing" (TestConfig.Missing): missing field in config file`,
+		`at TestConfig.Missing (as "missing"): missing field in config file`,
 		err.Error())
 }
 

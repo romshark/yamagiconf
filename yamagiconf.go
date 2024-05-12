@@ -534,8 +534,8 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 			path := path + "." + f.Name
 			contentNode := findContentNodeByTag(node, yamlTag)
 			if contentNode == nil {
-				return fmt.Errorf("config %q (%s): %w",
-					yamlTag, path, ErrMissingConfig)
+				return fmt.Errorf("at %s (as %q): %w",
+					path, yamlTag, ErrMissingConfig)
 			}
 			err := validateYAMLValues(yamlTag, path, f.Type, contentNode)
 			if err != nil {
@@ -616,13 +616,13 @@ func ValidateType[T any]() error {
 			yamlTag := getYAMLFieldName(f.Tag)
 			isExported := f.IsExported()
 			if yamlTag == "" && isExported {
-				return fmt.Errorf("%s: %w", path+"."+f.Name, ErrMissingYAMLTag)
+				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrMissingYAMLTag)
 			} else if yamlTag != "" && !isExported {
-				return fmt.Errorf("%s: %w", path+"."+f.Name, ErrYAMLTagOnUnexported)
+				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLTagOnUnexported)
 			}
 
 			if err := validateEnvField(f); err != nil {
-				return fmt.Errorf("%s: %w", path+"."+f.Name, err)
+				return fmt.Errorf("at %s: %w", path+"."+f.Name, err)
 			}
 
 			if !isExported {
@@ -639,7 +639,7 @@ func ValidateType[T any]() error {
 			if f.Type.Kind() == reflect.Pointer {
 				switch f.Type.Elem().Kind() {
 				case reflect.Pointer, reflect.Slice, reflect.Map:
-					return fmt.Errorf("%s: %w", path+"."+f.Name, ErrUnsupportedPtrType)
+					return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrUnsupportedPtrType)
 				}
 			}
 
@@ -652,7 +652,7 @@ func ValidateType[T any]() error {
 					for _, p := range stack {
 						if p == tp {
 							// Recursive type
-							return fmt.Errorf("%s: %w",
+							return fmt.Errorf("at %s: %w",
 								path+"."+f.Name, ErrRecursiveType)
 						}
 					}
@@ -666,11 +666,11 @@ func ValidateType[T any]() error {
 					reflect.Func,
 					reflect.Interface,
 					reflect.UnsafePointer:
-					return fmt.Errorf("%s: %w: %s",
+					return fmt.Errorf("at %s: %w: %s",
 						path+"."+f.Name, ErrUnsupportedType, tp.String())
 				case reflect.Int,
 					reflect.Uint:
-					return fmt.Errorf("%s: %w: %s, %s",
+					return fmt.Errorf("at %s: %w: %s, %s",
 						path+"."+f.Name, ErrUnsupportedType, tp.String(),
 						"use integer type with specified width, "+
 							"such as int32 or int64 instead of int")
@@ -680,7 +680,7 @@ func ValidateType[T any]() error {
 				case reflect.Map:
 					tp = tp.Elem()
 					if tp.Kind() == reflect.Struct {
-						return fmt.Errorf("%s: %w: %s, %s",
+						return fmt.Errorf("at %s: %w: %s, %s",
 							path+"."+f.Name, ErrUnsupportedType, tp.String(),
 							"use pointer to struct as map value")
 					}
@@ -690,7 +690,7 @@ func ValidateType[T any]() error {
 			}
 		}
 		if exportedFields < 1 {
-			return fmt.Errorf("%s: %w", path, ErrNoExportedFields)
+			return fmt.Errorf("at %s: %w", path, ErrNoExportedFields)
 		}
 		return nil
 	}
