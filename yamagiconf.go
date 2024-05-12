@@ -643,6 +643,7 @@ func ValidateType[T any]() error {
 					if err != nil {
 						return err
 					}
+					stack = stack[:len(stack)-1]
 				case reflect.Chan,
 					reflect.Func,
 					reflect.Interface,
@@ -677,12 +678,13 @@ func ValidateType[T any]() error {
 	}
 	var t T
 	tp := reflect.TypeOf(t)
-	stack = append(stack, tp)
+
 	n := tp.Name()
 	if n == "" {
 		// Anonymous type
 		n = "struct{...}"
 	}
+	stack = append(stack, tp)
 	return traverse(n, tp)
 }
 
