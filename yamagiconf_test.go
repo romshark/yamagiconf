@@ -427,6 +427,32 @@ recurs:
 	})
 }
 
+func TestValidateTypeErrIllegalRootType(t *testing.T) {
+	t.Run("string", func(t *testing.T) {
+		err := yamagiconf.ValidateType[string]()
+		require.ErrorIs(t, err, yamagiconf.ErrIllegalRootType)
+		require.Equal(t, fmt.Sprintf(
+			"at string: %s", yamagiconf.ErrIllegalRootType.Error(),
+		), err.Error())
+	})
+
+	t.Run("implements_yaml_unmarshaler", func(t *testing.T) {
+		err := yamagiconf.ValidateType[YAMLUnmarshaler]()
+		require.ErrorIs(t, err, yamagiconf.ErrIllegalRootType)
+		require.Equal(t, fmt.Sprintf(
+			"at YAMLUnmarshaler: %s", yamagiconf.ErrIllegalRootType.Error(),
+		), err.Error())
+	})
+
+	t.Run("implements_text_unmarshaler", func(t *testing.T) {
+		err := yamagiconf.ValidateType[TextUnmarshaler]()
+		require.ErrorIs(t, err, yamagiconf.ErrIllegalRootType)
+		require.Equal(t, fmt.Sprintf(
+			"at TextUnmarshaler: %s", yamagiconf.ErrIllegalRootType.Error(),
+		), err.Error())
+	})
+}
+
 func TestLoadErrMissingConfig(t *testing.T) {
 	type TestConfig struct {
 		OK      string `yaml:"ok,omitempty"`

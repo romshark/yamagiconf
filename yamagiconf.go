@@ -37,9 +37,11 @@ var (
 		"other variants of boolean literals of YAML are not supported")
 	ErrBadNullLiteral = errors.New("must be null, " +
 		"any other variants of null are not supported")
-	ErrNullOnNonPointer   = errors.New("cannot assign null to non-pointer type")
-	ErrYAMLTagUsed        = errors.New("avoid using YAML tags")
-	ErrRecursiveType      = errors.New("recursive type")
+	ErrNullOnNonPointer = errors.New("cannot assign null to non-pointer type")
+	ErrYAMLTagUsed      = errors.New("avoid using YAML tags")
+	ErrRecursiveType    = errors.New("recursive type")
+	ErrIllegalRootType  = errors.New("root type must be a struct type and must not " +
+		"implement encoding.TextUnmarshaler and yaml.Unmarshaler")
 	ErrUnsupportedType    = errors.New("unsupported type")
 	ErrUnsupportedPtrType = errors.New("unsupported pointer type")
 )
@@ -54,6 +56,7 @@ var (
 //     width, interface (including `any`), function, channel,
 //     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map,
 //     map with non-pointer struct value).
+//   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -141,64 +144,38 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 type Validator interface{ Validate() error }
 
-// asValidator returns nil if v doesn't implement the Validator interface
+// asIface[I any] returns nil if v doesn't implement the Validator interface
 // neither as a copy- nor as a pointer receiver.
-func asValidator(v reflect.Value) Validator {
+func asIface[I any](v reflect.Value) (i I) {
 	if !v.IsValid() {
-		return nil
+		return i
 	}
+	ti := reflect.TypeOf((*I)(nil)).Elem()
 	tp := v.Type()
 	if tp.Kind() == reflect.Pointer && v.IsNil() {
-		return nil
+		return i
 	}
-	if v.CanInterface() && tp.Implements(typeValidator) {
-		return v.Interface().(Validator)
+	if v.CanInterface() && tp.Implements(ti) {
+		return v.Interface().(I)
 	}
 	if v.CanAddr() {
 		vp := v.Addr()
-		if vp.CanInterface() && vp.Type().Implements(typeValidator) {
-			return vp.Interface().(Validator)
+		if vp.CanInterface() && vp.Type().Implements(ti) {
+			return vp.Interface().(I)
 		}
 	}
-	return nil
+	return i
 }
 
-// asTextUnmarshaler returns nil if v doesn't implement the encoding.TextUnmarshaler
-// interface neither as a copy- nor as a pointer receiver.
-func asTextUnmarshaler(v reflect.Value) encoding.TextUnmarshaler {
-	if !v.IsValid() {
-		return nil
-	}
-	tp := v.Type()
-	if tp.Kind() == reflect.Pointer && v.IsNil() {
-		return nil
-	}
-	if v.CanInterface() && tp.Implements(typeTextUnmarshaler) {
-		return v.Interface().(encoding.TextUnmarshaler)
-	}
-	if v.CanAddr() {
-		vp := v.Addr()
-		if vp.CanInterface() && vp.Type().Implements(typeTextUnmarshaler) {
-			return vp.Interface().(encoding.TextUnmarshaler)
-		}
-	}
-	return nil
-}
-
-func implementsTextUnmarshaler(t reflect.Type) bool {
-	if t.Implements(typeTextUnmarshaler) {
+func implementsInterface[I any](t reflect.Type) bool {
+	ti := reflect.TypeOf((*I)(nil)).Elem()
+	if t.Implements(ti) {
 		return true
 	} else if t.Kind() != reflect.Pointer {
-		return reflect.PointerTo(t).Implements(typeTextUnmarshaler)
+		return reflect.PointerTo(t).Implements(ti)
 	}
 	return false
 }
-
-var (
-	typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	typeValidator       = reflect.TypeOf((*Validator)(nil)).Elem()
-	typeTimeDuration    = reflect.TypeOf(time.Duration(0))
-)
 
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
@@ -206,7 +183,7 @@ var (
 func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 	tp := v.Type()
 
-	if v := asValidator(v); v != nil {
+	if v := asIface[Validator](v); v != nil {
 		if err := v.Validate(); err != nil {
 			return fmt.Errorf("at %d:%d: %w: %w",
 				node.Line, node.Column, ErrValidation, err)
@@ -218,7 +195,7 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 
 	switch tp.Kind() {
 	case reflect.Struct:
-		if implementsTextUnmarshaler(tp) {
+		if implementsInterface[encoding.TextUnmarshaler](tp) {
 			return nil
 		}
 		for i := range tp.NumField() {
@@ -283,7 +260,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 	}
 
-	if v := asTextUnmarshaler(v); v != nil {
+	if v := asIface[encoding.TextUnmarshaler](v); v != nil {
 		env, ok := os.LookupEnv(envVar)
 		if !ok {
 			return nil
@@ -456,6 +433,8 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 	return nil
 }
 
+var typeTimeDuration = reflect.TypeOf(time.Duration(0))
+
 func errUnmarshalEnv(path, envVar string, tp reflect.Type, err error) error {
 	if err != nil {
 		return fmt.Errorf("at %s: %w %s: expected %s: %w",
@@ -520,7 +499,7 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 
 	switch tp.Kind() {
 	case reflect.Struct:
-		if implementsTextUnmarshaler(tp) {
+		if implementsInterface[encoding.TextUnmarshaler](tp) {
 			return nil
 		}
 		for i := range tp.NumField() {
@@ -604,7 +583,7 @@ func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
-		if implementsTextUnmarshaler(tp) {
+		if implementsInterface[encoding.TextUnmarshaler](tp) {
 			return nil
 		}
 		for i := range tp.NumField() {
@@ -684,6 +663,11 @@ func ValidateType[T any]() error {
 		// Anonymous type
 		n = "struct{...}"
 	}
+	if tp.Kind() != reflect.Struct ||
+		implementsInterface[encoding.TextUnmarshaler](tp) ||
+		implementsInterface[yaml.Unmarshaler](tp) {
+		return fmt.Errorf("at %s: %w", n, ErrIllegalRootType)
+	}
 	stack = append(stack, tp)
 	return traverse(n, tp)
 }
@@ -732,7 +716,7 @@ func validateEnvField(f reflect.StructField) error {
 	case k == reflect.Pointer && kindIsPrimitive(f.Type.Elem().Kind()):
 		// Pointer to primitve
 		return nil
-	case implementsTextUnmarshaler(f.Type):
+	case implementsInterface[encoding.TextUnmarshaler](f.Type):
 		return nil
 	}
 	return fmt.Errorf("env var of unsupported type: %s", f.Type.String())
