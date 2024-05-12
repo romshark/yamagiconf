@@ -492,6 +492,79 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 	require.Equal(t, "TestConfig: no exported fields", err.Error())
 }
 
+func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
+	t.Run("NoopTextUnmarshalerWithYAMLTag", func(t *testing.T) {
+		type TestConfig struct {
+			X NoopTextUnmarshalerWithYAMLTag `yaml:"x"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTagOnInterfaceImpl)
+		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
+			`but field contains tag "yaml" ("illegal"): `+
+			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+	})
+
+	t.Run("NoopYAMLUnmarshalerWithYAMLTag", func(t *testing.T) {
+		type TestConfig struct {
+			X NoopYAMLUnmarshalerWithYAMLTag `yaml:"x"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTagOnInterfaceImpl)
+		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
+			`but field contains tag "yaml" ("illegal"): `+
+			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+	})
+
+	t.Run("NoopTextUnmarshalerWithEnvTag", func(t *testing.T) {
+		type TestConfig struct {
+			X NoopTextUnmarshalerWithEnvTag `yaml:"x"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTagOnInterfaceImpl)
+		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
+			`but field contains tag "env" ("illegal"): `+
+			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+	})
+
+	t.Run("NoopYAMLUnmarshalerWithEnvTag", func(t *testing.T) {
+		type TestConfig struct {
+			X NoopYAMLUnmarshalerWithEnvTag `yaml:"x"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTagOnInterfaceImpl)
+		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
+			`but field contains tag "env" ("illegal"): `+
+			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+	})
+}
+
+type (
+	NoopTextUnmarshalerWithYAMLTag struct {
+		HasYAMLTag string `yaml:"illegal"`
+	}
+	NoopYAMLUnmarshalerWithYAMLTag struct {
+		HasYAMLTag string `yaml:"illegal"`
+	}
+	NoopTextUnmarshalerWithEnvTag struct {
+		HasEnvTag string `env:"illegal"`
+	}
+	NoopYAMLUnmarshalerWithEnvTag struct {
+		HasEnvTag string `env:"illegal"`
+	}
+)
+
+func (u *NoopTextUnmarshalerWithYAMLTag) UnmarshalText([]byte) error     { return nil }
+func (u *NoopYAMLUnmarshalerWithYAMLTag) UnmarshalYAML(*yaml.Node) error { return nil }
+func (u *NoopTextUnmarshalerWithEnvTag) UnmarshalText([]byte) error      { return nil }
+func (u *NoopYAMLUnmarshalerWithEnvTag) UnmarshalYAML(*yaml.Node) error  { return nil }
+
+var (
+	_ encoding.TextUnmarshaler = new(NoopTextUnmarshalerWithYAMLTag)
+	_ yaml.Unmarshaler         = new(NoopYAMLUnmarshalerWithYAMLTag)
+	_ encoding.TextUnmarshaler = new(NoopTextUnmarshalerWithEnvTag)
+	_ yaml.Unmarshaler         = new(NoopYAMLUnmarshalerWithEnvTag)
+)
+
 func TestAnonymousStructErrorPath(t *testing.T) {
 	var c struct {
 		MissingYAMLTag string

@@ -33,16 +33,19 @@ an error annotated with line and column in the YAML file if necessary.
 	- ❗️ Requires `"env"` struct tags to be POSIX-style and
 	forbids any non-primitive env var fields.
 	- ❗️ Allows only primitive fields with the `env` tag to be overwritten with env vars.
-  forbids any non-primitive env var fields.
+	forbids any non-primitive env var fields.
 	- 🚫 Forbids non-pointer struct map values.
+	- 🚫 Forbids the use of `"yaml"` and `"env"` struct tags within implementations of
+	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
 - YAML restrictions:
 	- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
-  allows only `true` and `false`.
+	allows only `true` and `false`.
 	- 🚫 Forbids the use of `~` and `Null`, allows only `null` for nilables.
 	- 🚫 Forbids assigning `null` to non-nilables (which normally would assign zero value).
 	- 🚫 Forbids fields in the YAML file that aren't specified by the Go type.
 	- 🚫 Forbids the use of [YAML tags](https://yaml.org/spec/1.2.2/#3212-tags).
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
+
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
 	then its validation method will be called.
@@ -53,6 +56,8 @@ an error annotated with line and column in the YAML file if necessary.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
 	struct validation tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
+	- Supports `encoding.TextUnmarshaler` and `yaml.Unmarshaler`
+	(except for the root struct type).
 
 ## Example
 

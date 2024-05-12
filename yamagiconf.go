@@ -30,8 +30,11 @@ var (
 	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
 	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
 	ErrEnvTagOnUnexported  = errors.New("env tag on unexported field")
-	ErrNoExportedFields    = errors.New("no exported fields")
-	ErrInvalidEnvTag       = fmt.Errorf("invalid env struct tag: "+
+	ErrTagOnInterfaceImpl  = errors.New("implementations of interfaces " +
+		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
+		"contain yaml and env tags")
+	ErrNoExportedFields = errors.New("no exported fields")
+	ErrInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
 		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
 	ErrEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
 	ErrMissingConfig           = errors.New("missing field in config file")
@@ -64,6 +67,8 @@ var (
 //   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
 //   - T contains any structs with no exported fields.
 //   - T contains any structs with yaml and/or env tags assigned to unexported fields.
+//   - T contains any struct implementing either yaml.Unmarshaler or
+//     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -514,7 +519,8 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 
 	switch tp.Kind() {
 	case reflect.Struct:
-		if implementsInterface[encoding.TextUnmarshaler](tp) {
+		if implementsInterface[encoding.TextUnmarshaler](tp) ||
+			implementsInterface[yaml.Unmarshaler](tp) {
 			return nil
 		}
 		for i := range tp.NumField() {
@@ -601,8 +607,9 @@ func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
-		if implementsInterface[encoding.TextUnmarshaler](tp) {
-			return nil
+		if implementsInterface[encoding.TextUnmarshaler](tp) ||
+			implementsInterface[yaml.Unmarshaler](tp) {
+			return validateTypeImplementingIfaces(path, tp)
 		}
 		exportedFields := 0
 		for i := range tp.NumField() {
@@ -699,6 +706,27 @@ func ValidateType[T any]() error {
 	return traverse(n, tp)
 }
 
+// validateTypeImplementingIfaces assumes that implementer is
+// implementing either encoding.TextUnmarshaler or yaml.Unmarshaler
+func validateTypeImplementingIfaces(path string, implementer reflect.Type) error {
+	implementedIface := "yaml.Unmarshaler"
+	if implementsInterface[encoding.TextUnmarshaler](implementer) {
+		implementedIface = "encoding.TextUnmarshaler"
+	}
+	for i := range implementer.NumField() {
+		f := implementer.Field(i)
+		if tag := getYAMLFieldName(f.Tag); tag != "" {
+			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
+				"\"yaml\" (%q): %w", path, implementedIface, tag, ErrTagOnInterfaceImpl)
+		}
+		if tag := f.Tag.Get("env"); tag != "" {
+			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
+				"\"env\" (%q): %w", path, implementedIface, tag, ErrTagOnInterfaceImpl)
+		}
+	}
+	return nil
+}
+
 func findContentNodeByTag(node *yaml.Node, yamlTag string) *yaml.Node {
 	// Find value node
 	for i, n := range node.Content {
@@ -744,6 +772,8 @@ func validateEnvField(f reflect.StructField) error {
 		// Pointer to primitve
 		return nil
 	case implementsInterface[encoding.TextUnmarshaler](f.Type):
+		return nil
+	case implementsInterface[yaml.Unmarshaler](f.Type):
 		return nil
 	}
 	return fmt.Errorf("%w: %s", ErrEnvVarOnUnsupportedType, f.Type.String())
