@@ -30,8 +30,10 @@ var (
 	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
 	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
 	ErrYAMLTagRedefined    = errors.New("a yaml tag must be unique")
-	ErrEnvTagOnUnexported  = errors.New("env tag on unexported field")
-	ErrTagOnInterfaceImpl  = errors.New("implementations of interfaces " +
+	ErrYAMLAnchorRedefined = errors.New("yaml anchors must be unique throughout " +
+		"the whole document")
+	ErrEnvTagOnUnexported = errors.New("env tag on unexported field")
+	ErrTagOnInterfaceImpl = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
 		"contain yaml and env tags")
 	ErrNoExportedFields = errors.New("no exported fields")
@@ -79,6 +81,7 @@ var (
 //   - the yaml file contains null values other than `null` (`~`, etc.).
 //   - the yaml file assigns `null` to a non-pointer Go type.
 //   - the yaml file contains any YAML tags (https://yaml.org/spec/1.2.2/#3212-tags).
+//   - the yaml file contains any redeclared anchors.
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrNilConfig
@@ -124,7 +127,9 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		configTypeName = "struct{...}"
 	}
 
-	err = validateYAMLValues("", configTypeName, configType, rootNode.Content[0])
+	err = validateYAMLValues(
+		make(map[string]*yaml.Node), "", configTypeName, configType, rootNode.Content[0],
+	)
 	if err != nil {
 		return err
 	}
@@ -509,7 +514,9 @@ func leftmostPathElement(s string) (element, rest string) {
 
 // validateYAMLValues returns an error if the yaml model contains illegal values
 // or is missing values specified by T. Assumes that tp has already been validated.
-func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) error {
+func validateYAMLValues(
+	anchors map[string]*yaml.Node, yamlTag, path string, tp reflect.Type, node *yaml.Node,
+) error {
 	if err := validateValue(tp, node); err != nil {
 		if yamlTag != "" {
 			return fmt.Errorf("at %d:%d: %q (%s): %w",
@@ -517,6 +524,17 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 		}
 		return fmt.Errorf("at %d:%d: %s: %w",
 			node.Line, node.Column, path, err)
+	}
+
+	if node.Anchor != "" {
+		if previous, ok := anchors[node.Anchor]; ok {
+			return fmt.Errorf("at %d:%d: redefined anchor %q at %d:%d: %w",
+				node.Line, node.Column,
+				node.Anchor,
+				previous.Line, previous.Column,
+				ErrYAMLAnchorRedefined)
+		}
+		anchors[node.Anchor] = node
 	}
 
 	switch tp.Kind() {
@@ -537,7 +555,7 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 				return fmt.Errorf("at %s (as %q): %w",
 					path, yamlTag, ErrMissingConfig)
 			}
-			err := validateYAMLValues(yamlTag, path, f.Type, contentNode)
+			err := validateYAMLValues(anchors, yamlTag, path, f.Type, contentNode)
 			if err != nil {
 				return err
 			}
@@ -546,7 +564,7 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 		tp := tp.Elem()
 		for index, node := range node.Content {
 			path := fmt.Sprintf("%s[%d]", path, index)
-			if err := validateYAMLValues(yamlTag, path, tp, node); err != nil {
+			if err := validateYAMLValues(anchors, yamlTag, path, tp, node); err != nil {
 				return err
 			}
 		}
@@ -554,12 +572,12 @@ func validateYAMLValues(yamlTag, path string, tp reflect.Type, node *yaml.Node) 
 		for i := 0; i < len(node.Content); i += 2 {
 			path := fmt.Sprintf("%s[%q]", path, node.Content[i].Value)
 			// Validate key
-			err := validateYAMLValues(yamlTag, path, tp, node.Content[i])
+			err := validateYAMLValues(anchors, yamlTag, path, tp, node.Content[i])
 			if err != nil {
 				return err
 			}
 			// Validate value
-			err = validateYAMLValues(yamlTag, path, tp, node.Content[i+1])
+			err = validateYAMLValues(anchors, yamlTag, path, tp, node.Content[i+1])
 			if err != nil {
 				return err
 			}

@@ -69,8 +69,8 @@ embedded:
     - 3
   slice-int: [1, 2, 3]
   map-string-string:
-    foo: bar
-    bazz: fuzz
+    foo: &test-anchor val
+    bazz: *test-anchor
   map-int-int:
     2: 4
     4: 8
@@ -90,11 +90,48 @@ enabled: true`), 0o664)
 	require.Equal(t, "null\n", c.StrFoldBlockNull)
 	require.Equal(t, `OK`, c.RequiredString)
 	require.Equal(t, int32(42), c.Int32)
-	require.Equal(t, map[string]string{"foo": "bar", "bazz": "fuzz"}, c.MapStringString)
+	require.Equal(t, map[string]string{"foo": "val", "bazz": "val"}, c.MapStringString)
 	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapIntInt)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt)
 	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
+}
+
+func TestLoadErrYAMLAnchorRedefined(t *testing.T) {
+	type Container struct {
+		One string `yaml:"one"`
+		Two string `yaml:"two"`
+	}
+	type TestConfig struct {
+		One       string    `yaml:"one"`
+		Two       string    `yaml:"two"`
+		Container Container `yaml:"container"`
+	}
+	t.Run("level_0", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+one: &x v1
+two: &x
+container:
+  one: *x
+  two: *x
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
+		require.Equal(t, `at 3:6: redefined anchor "x" at 2:6: `+
+			`yaml anchors must be unique throughout the whole document`, err.Error())
+	})
+
+	t.Run("level_1", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+one: &x v1
+two: *x
+container:
+  one: &x
+  two: *x
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
+		require.Equal(t, `at 5:8: redefined anchor "x" at 2:6: `+
+			`yaml anchors must be unique throughout the whole document`, err.Error())
+	})
 }
 
 func TestLoadErrMissingYAMLTag(t *testing.T) {
