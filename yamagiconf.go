@@ -599,12 +599,8 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 	return nil
 }
 
-// ValidateType returns an error if T is recursive, contains
-// any fields that are missing the `yaml` struct tag, contains
-// any fields with malformed `env` struct tag, or contains
-// any unsupported types (signed and unsigned integers with unspecified
-// width, interface (including `any`), function, channel, unsafe.Pointer,
-// pointer to pointer, pointer to slice and pointer to map).
+// ValidateType returns an error if any violation of rules defined by
+// LoadFile is determined, otherwise returns nil.
 func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
