@@ -29,6 +29,7 @@ var (
 	ErrMalformedYAML       = errors.New("malformed YAML")
 	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
 	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
+	ErrYAMLTagRedefined    = errors.New("a yaml tag must be unique")
 	ErrEnvTagOnUnexported  = errors.New("env tag on unexported field")
 	ErrTagOnInterfaceImpl  = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
@@ -69,6 +70,7 @@ var (
 //   - T contains any structs with yaml and/or env tags assigned to unexported fields.
 //   - T contains any struct implementing either yaml.Unmarshaler or
 //     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
+//   - T contains any struct containing multiple fields with the same yaml tag.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -612,6 +614,7 @@ func ValidateType[T any]() error {
 			return validateTypeImplementingIfaces(path, tp)
 		}
 		exportedFields := 0
+		yamlTags := map[string]string{} // tag -> path
 		for i := range tp.NumField() {
 			f := tp.Field(i)
 			yamlTag := getYAMLFieldName(f.Tag)
@@ -630,6 +633,12 @@ func ValidateType[T any]() error {
 				continue
 			}
 			exportedFields++
+
+			if previous, ok := yamlTags[yamlTag]; ok {
+				return fmt.Errorf("at %s: yaml tag %q previously defined on field %s: %w",
+					path+"."+f.Name, yamlTag, previous, ErrYAMLTagRedefined)
+			}
+			yamlTags[yamlTag] = path + "." + f.Name
 
 			if f.Type.Kind() == reflect.Pointer {
 				switch f.Type.Elem().Kind() {
