@@ -78,7 +78,7 @@ var (
 //   - the yaml file contains boolean literals other than `true` and `false`.
 //   - the yaml file contains null values other than `null` (`~`, etc.).
 //   - the yaml file assigns `null` to a non-pointer Go type.
-//   - the yaml file contains any YAML tags.
+//   - the yaml file contains any YAML tags (https://yaml.org/spec/1.2.2/#3212-tags).
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrNilConfig
