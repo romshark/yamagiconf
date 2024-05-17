@@ -39,6 +39,13 @@ func TestLoadFile(t *testing.T) {
 		SliceInt         []int64           `yaml:"slice-int"`
 		Time             time.Time         `yaml:"time"`
 
+		UnmarshalerYAML        YAMLUnmarshaler  `yaml:"unmarshaler-yaml"`
+		UnmarshalerText        TextUnmarshaler  `yaml:"unmarshaler-text"`
+		PtrUnmarshalerYAML     *YAMLUnmarshaler `yaml:"ptr-unmarshaler-yaml"`
+		PtrUnmarshalerText     *TextUnmarshaler `yaml:"ptr-unmarshaler-text"`
+		PtrUnmarshalerYAMLNull *YAMLUnmarshaler `yaml:"ptr-unmarshaler-yaml-null"`
+		PtrUnmarshalerTextNull *TextUnmarshaler `yaml:"ptr-unmarshaler-text-null"`
+
 		// ignored must be ignored by yamagiconf even though it's
 		// of type int which is unsupported.
 		//lint:ignore U1000 no need to use it.
@@ -77,6 +84,12 @@ map-int-int:
   2: 4
   4: 8
 time: 2024-05-09T20:19:22Z
+unmarshaler-yaml: YAML unmarshaler non-pointer non-null
+unmarshaler-text: Text unmarshaler non-pointer non-null
+ptr-unmarshaler-yaml: YAML unmarshaler pointer
+ptr-unmarshaler-text: Text unmarshaler pointer
+ptr-unmarshaler-yaml-null: null
+ptr-unmarshaler-text-null: null
 container:
   any-string: 'any string'
 int32: 42
@@ -100,6 +113,12 @@ enabled: true`), 0o664)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt)
 	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
+	require.Equal(t, `YAML unmarshaler non-pointer non-null`, c.UnmarshalerYAML.Str)
+	require.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
+	require.Equal(t, `YAML unmarshaler pointer`, c.PtrUnmarshalerYAML.Str)
+	require.Equal(t, `Text unmarshaler pointer`, c.PtrUnmarshalerText.Str)
+	require.Nil(t, c.PtrUnmarshalerYAMLNull)
+	require.Nil(t, c.PtrUnmarshalerTextNull)
 }
 
 func TestLoadErrYAMLAnchorRedefined(t *testing.T) {

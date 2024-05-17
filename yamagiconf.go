@@ -216,7 +216,8 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 
 	switch tp.Kind() {
 	case reflect.Struct:
-		if implementsInterface[encoding.TextUnmarshaler](tp) {
+		if implementsInterface[encoding.TextUnmarshaler](tp) ||
+			implementsInterface[yaml.Unmarshaler](tp) {
 			return nil
 		}
 		for i := range tp.NumField() {
