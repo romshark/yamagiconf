@@ -26,18 +26,20 @@ func LoadSrc[T any](src string) (*T, error) {
 
 func TestLoadFile(t *testing.T) {
 	type Embedded struct {
-		AnyString        string            `yaml:"any-string"`
-		NotATag          string            `yaml:"not-a-tag"`
-		StrQuotedNull    string            `yaml:"str-quoted-null"`
-		StrDubQuotNull   string            `yaml:"str-doublequoted-null"`
-		StrBlockNull     string            `yaml:"str-block-null"`
-		StrFoldBlockNull string            `yaml:"str-foldblock-null"`
-		RequiredString   string            `yaml:"required-string" validate:"required"`
-		MapStringString  map[string]string `yaml:"map-string-string"`
-		MapIntInt        map[int16]int16   `yaml:"map-int-int"`
-		SliceStr         []string          `yaml:"slice-str"`
-		SliceInt         []int64           `yaml:"slice-int"`
-		Time             time.Time         `yaml:"time"`
+		AnyString         string            `yaml:"any-string"`
+		NotATag           string            `yaml:"not-a-tag"`
+		StrQuotedNull     string            `yaml:"str-quoted-null"`
+		StrDubQuotNull    string            `yaml:"str-doublequoted-null"`
+		StrBlockNull      string            `yaml:"str-block-null"`
+		StrFoldBlockNull  string            `yaml:"str-foldblock-null"`
+		RequiredString    string            `yaml:"required-string" validate:"required"`
+		MapStringString   map[string]string `yaml:"map-string-string"`
+		MapInt16Int16     map[int16]int16   `yaml:"map-int16-int16"`
+		MapInt16Int16Null map[int16]int16   `yaml:"map-int16-int16-null"`
+		SliceStr          []string          `yaml:"slice-str"`
+		SliceInt64        []int64           `yaml:"slice-int64"`
+		SliceInt64Null    []int64           `yaml:"slice-int64-null"`
+		Time              time.Time         `yaml:"time"`
 
 		UnmarshalerYAML        YAMLUnmarshaler  `yaml:"unmarshaler-yaml"`
 		UnmarshalerText        TextUnmarshaler  `yaml:"unmarshaler-text"`
@@ -76,13 +78,15 @@ slice-str:
   - 1
   - 2
   - 3
-slice-int: [1, 2, 3]
+slice-int64: [1, 2, 3]
+slice-int64-null: null
 map-string-string:
   foo: &test-anchor val
   bazz: *test-anchor
-map-int-int:
+map-int16-int16:
   2: 4
   4: 8
+map-int16-int16-null: null
 time: 2024-05-09T20:19:22Z
 unmarshaler-yaml: YAML unmarshaler non-pointer non-null
 unmarshaler-text: Text unmarshaler non-pointer non-null
@@ -109,9 +113,11 @@ enabled: true`), 0o664)
 	require.Equal(t, `OK`, c.RequiredString)
 	require.Equal(t, int32(42), c.Int32)
 	require.Equal(t, map[string]string{"foo": "val", "bazz": "val"}, c.MapStringString)
-	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapIntInt)
+	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapInt16Int16)
+	require.Nil(t, c.MapInt16Int16Null)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
-	require.Equal(t, []int64{1, 2, 3}, c.SliceInt)
+	require.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
+	require.Nil(t, c.SliceInt64Null)
 	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
 	require.Equal(t, `YAML unmarshaler non-pointer non-null`, c.UnmarshalerYAML.Str)
 	require.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
