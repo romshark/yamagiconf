@@ -29,13 +29,12 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids recursive Go types.
 	- 🚫 Forbids the use of `any`, `int` & `uint` (unspecified width), and other types.
 	Only maps, slices, arrays and deterministic primitives are allowed.
-	- ❗️ Requires `"yaml"` struct tags throughout your configuration struct type.
-	- ❗️ Requires `"env"` struct tags to be POSIX-style and
-	forbids any non-primitive env var fields.
-	- ❗️ Allows only primitive fields with the `env` tag to be overwritten with env vars.
-	forbids any non-primitive env var fields.
+	- ❗️ Requires `yaml` struct tags on all exported fields.
+	- ❗️ Requires `env` struct tags to be POSIX-style.
+	- 🚫 Forbids the use of `env` struct tag on non-primitive fields
+	(allows only floats, ints, strings, bool).
 	- 🚫 Forbids non-pointer struct map values.
-	- 🚫 Forbids the use of `"yaml"` and `"env"` struct tags within implementations of
+	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
 	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
 	- 🚫 Forbids the use of YAML tag option `"inline"` for non-embedded structs and
 	requires embedded structs to use option `"inline"`.
@@ -53,14 +52,14 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
 	then its validation method will be called.
 	If it returns an error - the error will be reported.
-	Keep your validation logic close to your configuration type definitions.
-	- Reports errors by `line:column` when it can.
-	- Supports `encoding.TextUnmarshaler` and `time.Duration`.
+	Keeps your validation logic close to your configuration type definitions.
+	- Reports errors by `line:column` when possible.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
 	struct validation tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
 	- Supports `encoding.TextUnmarshaler` and `yaml.Unmarshaler`
 	(except for the root struct type).
+	- Supports `time.Duration`.
 
 ## Example
 
