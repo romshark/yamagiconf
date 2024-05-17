@@ -37,6 +37,8 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids non-pointer struct map values.
 	- 🚫 Forbids the use of `"yaml"` and `"env"` struct tags within implementations of
 	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
+	- 🚫 Forbids the use of YAML tag option `"inline"` for non-embedded structs and
+	requires embedded structs to use option `"inline"`.
 - YAML restrictions:
 	- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
 	allows only `true` and `false`.

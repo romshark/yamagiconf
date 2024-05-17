@@ -44,37 +44,42 @@ func TestLoadFile(t *testing.T) {
 		//lint:ignore U1000 no need to use it.
 		ignored int
 	}
+	type Container struct {
+		AnyString string `yaml:"any-string"`
+	}
 	type TestConfig struct {
-		Embedded `yaml:"embedded"`
-		Int32    int32 `yaml:"int32"`
-		Enabled  bool  `yaml:"enabled"`
+		Embedded  `yaml:",inline"`
+		Container Container `yaml:"container"`
+		Int32     int32     `yaml:"int32"`
+		Enabled   bool      `yaml:"enabled"`
 	}
 
 	p := filepath.Join(t.TempDir(), "test-config.yaml")
 	err := os.WriteFile(p, []byte(`# test YAML file
-int32: 42
-embedded:
+any-string: 'any string'
+not-a-tag: '!tag value'
+str-quoted-null: 'null'
+str-doublequoted-null: "null"
+str-block-null: |
+  null
+str-foldblock-null: >
+  null
+required-string: 'OK'
+slice-str:
+  - 1
+  - 2
+  - 3
+slice-int: [1, 2, 3]
+map-string-string:
+  foo: &test-anchor val
+  bazz: *test-anchor
+map-int-int:
+  2: 4
+  4: 8
+time: 2024-05-09T20:19:22Z
+container:
   any-string: 'any string'
-  not-a-tag: '!tag value'
-  str-quoted-null: 'null'
-  str-doublequoted-null: "null"
-  str-block-null: |
-    null
-  str-foldblock-null: >
-    null
-  required-string: 'OK'
-  slice-str:
-    - 1
-    - 2
-    - 3
-  slice-int: [1, 2, 3]
-  map-string-string:
-    foo: &test-anchor val
-    bazz: *test-anchor
-  map-int-int:
-    2: 4
-    4: 8
-  time: 2024-05-09T20:19:22Z
+int32: 42
 enabled: true`), 0o664)
 	require.NoError(t, err)
 
@@ -508,6 +513,88 @@ func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
 	require.Equal(t,
 		"at TestConfig.unexported: yaml tag on unexported field",
 		err.Error())
+}
+
+func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
+	t.Run("struct", func(t *testing.T) {
+		type Container struct {
+			Str string `yaml:"str"`
+		}
+		type TestConfig struct {
+			Container Container `yaml:",inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		require.Equal(t,
+			"at TestConfig.Container: inline yaml on non-embedded field",
+			err.Error())
+	})
+
+	t.Run("struct_with_tag", func(t *testing.T) {
+		type Container struct {
+			Str string `yaml:"str"`
+		}
+		type TestConfig struct {
+			Container Container `yaml:"container,inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		require.Equal(t,
+			"at TestConfig.Container: inline yaml on non-embedded field",
+			err.Error())
+	})
+
+	t.Run("string", func(t *testing.T) {
+		type TestConfig struct {
+			Str string `yaml:",inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		require.Equal(t,
+			"at TestConfig.Str: inline yaml on non-embedded field",
+			err.Error())
+	})
+
+	t.Run("string_with_tag", func(t *testing.T) {
+		type TestConfig struct {
+			Str string `yaml:"str,inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		require.Equal(t,
+			"at TestConfig.Str: inline yaml on non-embedded field",
+			err.Error())
+	})
+}
+
+func TestValidateTypeErrYAMLNoInlineOpt(t *testing.T) {
+	t.Run("no_inline", func(t *testing.T) {
+		type Container struct {
+			Str string `yaml:"str"`
+		}
+		type TestConfig struct {
+			Container `yaml:"container"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineOpt)
+		require.Equal(t,
+			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
+			err.Error())
+	})
+
+	t.Run("named_inline", func(t *testing.T) {
+		type Container struct {
+			Str string `yaml:"str"`
+		}
+		type TestConfig struct {
+			Container `yaml:"container,inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineOpt)
+		require.Equal(t,
+			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
+			err.Error())
+	})
 }
 
 func TestValidateTypeErrYAmlTagRedefined(t *testing.T) {

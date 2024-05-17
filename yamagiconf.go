@@ -28,6 +28,8 @@ var (
 	ErrEmptyFile           = errors.New("empty file")
 	ErrMalformedYAML       = errors.New("malformed YAML")
 	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
+	ErrYAMLInlineNonAnon   = errors.New("inline yaml on non-embedded field")
+	ErrYAMLInlineOpt       = errors.New("use `yaml:\",inline\"` for embedded fields")
 	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
 	ErrYAMLTagRedefined    = errors.New("a yaml tag must be unique")
 	ErrYAMLAnchorRedefined = errors.New("yaml anchors must be unique throughout " +
@@ -224,7 +226,10 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 			}
 			fv := v.Field(i)
 			yamlTag := getYAMLFieldName(ft.Tag)
-			nodeValue := findContentNodeByTag(node, yamlTag)
+			nodeValue := node
+			if !ft.Anonymous {
+				nodeValue = findContentNodeByTag(node, yamlTag)
+			}
 			if err := invokeValidateRecursively(fv, nodeValue); err != nil {
 				return err
 			}
@@ -550,7 +555,10 @@ func validateYAMLValues(
 			}
 			yamlTag := getYAMLFieldName(f.Tag)
 			path := path + "." + f.Name
-			contentNode := findContentNodeByTag(node, yamlTag)
+			contentNode := node
+			if !f.Anonymous {
+				contentNode = findContentNodeByTag(node, yamlTag)
+			}
 			if contentNode == nil {
 				return fmt.Errorf("at %s (as %q): %w",
 					path, yamlTag, ErrMissingConfig)
@@ -632,8 +640,15 @@ func ValidateType[T any]() error {
 		for i := range tp.NumField() {
 			f := tp.Field(i)
 			yamlTag := getYAMLFieldName(f.Tag)
+			isInline := yamlTagIsInline(f.Tag)
 			isExported := f.IsExported()
-			if yamlTag == "" && isExported {
+			if isExported && f.Anonymous && (yamlTag != "" || !isInline) {
+				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLInlineOpt)
+			}
+			if isExported && !f.Anonymous && isInline {
+				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLInlineNonAnon)
+			}
+			if yamlTag == "" && isExported && !f.Anonymous {
 				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrMissingYAMLTag)
 			} else if yamlTag != "" && !isExported {
 				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLTagOnUnexported)
@@ -773,6 +788,12 @@ func getYAMLFieldName(t reflect.StructTag) string {
 		yamlTag = yamlTag[:i]
 	}
 	return yamlTag
+}
+
+func yamlTagIsInline(t reflect.StructTag) bool {
+	yamlTag := t.Get("yaml")
+	i := strings.IndexByte(yamlTag, ',')
+	return i != -1 && yamlTag[i+1:] == "inline"
 }
 
 func validateEnvField(f reflect.StructField) error {
