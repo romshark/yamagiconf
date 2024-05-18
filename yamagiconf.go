@@ -814,8 +814,6 @@ func validateEnvField(f reflect.StructField) error {
 		return nil
 	case implementsInterface[encoding.TextUnmarshaler](f.Type):
 		return nil
-	case implementsInterface[yaml.Unmarshaler](f.Type):
-		return nil
 	}
 	return fmt.Errorf("%w: %s", ErrEnvVarOnUnsupportedType, f.Type.String())
 }

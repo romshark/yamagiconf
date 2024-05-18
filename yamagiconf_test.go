@@ -1601,23 +1601,3 @@ func TestLoadTextUnmarshaler(t *testing.T) {
 	require.Equal(t, "t2", *c.U2.Str)
 	require.Equal(t, "t3", c.U1Ptr.Str)
 }
-
-// func TestMergeMap(t *testing.T) {
-// 	type TestConfig struct {
-// 		Map1 map[string]string `yaml:"map1"`
-// 		Map2 map[string]string `yaml:"map2"`
-// 		Map3 map[string]string `yaml:"map3"`
-// 	}
-// 	c, err := LoadSrc[TestConfig](`
-// map1: &map1
-//   foo: bar
-// map2: &map2
-//   bazz: fazz
-// map3:
-//   kraz: fraz
-//   <<: *map1 *map2
-// `)
-// 	require.NoError(t, err)
-// 	require.Equal(t, map[string]string{"foo": "bar"}, c.Map1)
-// 	require.Equal(t, map[string]string{"bazz": "fazz"}, c.Map2)
-// }
