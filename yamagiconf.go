@@ -632,103 +632,103 @@ func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
-		if implementsInterface[encoding.TextUnmarshaler](tp) ||
-			implementsInterface[yaml.Unmarshaler](tp) {
-			return validateTypeImplementingIfaces(path, tp)
-		}
-		exportedFields := 0
-		yamlTags := map[string]string{} // tag -> path
-		for i := range tp.NumField() {
-			f := tp.Field(i)
-			yamlTag := getYAMLFieldName(f.Tag)
-			isInline := yamlTagIsInline(f.Tag)
-			isExported := f.IsExported()
-			if isExported && f.Anonymous && (yamlTag != "" || !isInline) {
-				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLInlineOpt)
-			}
-			if isExported && !f.Anonymous && isInline {
-				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLInlineNonAnon)
-			}
-			if yamlTag == "" && isExported && !f.Anonymous {
-				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrMissingYAMLTag)
-			} else if yamlTag != "" && !isExported {
-				return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrYAMLTagOnUnexported)
+		switch tp.Kind() {
+		case reflect.Struct:
+			if implementsInterface[encoding.TextUnmarshaler](tp) ||
+				implementsInterface[yaml.Unmarshaler](tp) {
+				return validateTypeImplementingIfaces(path, tp)
 			}
 
-			if err := validateEnvField(f); err != nil {
-				return fmt.Errorf("at %s: %w", path+"."+f.Name, err)
-			}
-
-			if !isExported {
-				continue
-			}
-			exportedFields++
-
-			if previous, ok := yamlTags[yamlTag]; ok {
-				return fmt.Errorf("at %s: yaml tag %q previously defined on field %s: %w",
-					path+"."+f.Name, yamlTag, previous, ErrYAMLTagRedefined)
-			}
-			yamlTags[yamlTag] = path + "." + f.Name
-
-			if f.Type.Kind() == reflect.Pointer {
-				switch f.Type.Elem().Kind() {
-				case reflect.Pointer, reflect.Slice, reflect.Map:
-					return fmt.Errorf("at %s: %w", path+"."+f.Name, ErrUnsupportedPtrType)
+			for _, p := range stack {
+				if p == tp {
+					// Recursive type
+					return fmt.Errorf("at %s: %w",
+						path, ErrRecursiveType)
 				}
 			}
+			stack = append(stack, tp) // Push stack
 
-		LOOP:
-			for tp := f.Type; ; {
-				tp = firstNonPointer(tp)
-				switch tp.Kind() {
-				case reflect.Struct:
-					tp := firstNonPointer(tp)
-					for _, p := range stack {
-						if p == tp {
-							// Recursive type
-							return fmt.Errorf("at %s: %w",
-								path+"."+f.Name, ErrRecursiveType)
-						}
-					}
-					stack = append(stack, tp)
-					err := traverse(path+"."+f.Name, tp)
-					if err != nil {
-						return err
-					}
-					stack = stack[:len(stack)-1]
-				case reflect.Chan,
-					reflect.Func,
-					reflect.Interface,
-					reflect.UnsafePointer:
-					return fmt.Errorf("at %s: %w: %s",
-						path+"."+f.Name, ErrUnsupportedType, tp.String())
-				case reflect.Int:
-					return fmt.Errorf("at %s: %w: %s, %s",
-						path+"."+f.Name, ErrUnsupportedType, tp.String(),
-						"use integer type with specified width, "+
-							"such as int8, int16, int32 or int64 instead of int")
-				case reflect.Uint:
-					return fmt.Errorf("at %s: %w: %s, %s",
-						path+"."+f.Name, ErrUnsupportedType, tp.String(),
-						"use integer type with specified width, "+
-							"such as uint8, uint16, uint32 or uint64 instead of uint")
-				case reflect.Slice, reflect.Array:
-					tp = tp.Elem()
-					continue LOOP
-				case reflect.Map:
-					tp = tp.Elem()
-					if tp.Kind() == reflect.Struct {
-						return fmt.Errorf("at %s: %w: %s, %s",
-							path+"."+f.Name, ErrUnsupportedType, tp.String(),
-							"use pointer to struct as map value")
-					}
-					continue LOOP
+			exportedFields := 0
+			yamlTags := map[string]string{} // tag -> path
+			for i := range tp.NumField() {
+				f := tp.Field(i)
+				path := path + "." + f.Name
+				yamlTag := getYAMLFieldName(f.Tag)
+				isInline := yamlTagIsInline(f.Tag)
+				isExported := f.IsExported()
+				if isExported && f.Anonymous && (yamlTag != "" || !isInline) {
+					return fmt.Errorf("at %s: %w", path, ErrYAMLInlineOpt)
 				}
-				break LOOP
+				if isExported && !f.Anonymous && isInline {
+					return fmt.Errorf("at %s: %w", path, ErrYAMLInlineNonAnon)
+				}
+				if yamlTag == "" && isExported && !f.Anonymous {
+					return fmt.Errorf("at %s: %w", path, ErrMissingYAMLTag)
+				} else if yamlTag != "" && !isExported {
+					return fmt.Errorf("at %s: %w", path, ErrYAMLTagOnUnexported)
+				}
+
+				if err := validateEnvField(f); err != nil {
+					return fmt.Errorf("at %s: %w", path, err)
+				}
+
+				if !isExported {
+					continue
+				}
+				exportedFields++
+
+				if previous, ok := yamlTags[yamlTag]; ok {
+					return fmt.Errorf(
+						"at %s: yaml tag %q previously defined on field %s: %w",
+						path, yamlTag, previous, ErrYAMLTagRedefined)
+				}
+				yamlTags[yamlTag] = path
+
+				err := traverse(path, f.Type)
+				if err != nil {
+					return err
+				}
 			}
-		}
-		if exportedFields < 1 {
-			return fmt.Errorf("at %s: %w", path, ErrNoExportedFields)
+			if exportedFields < 1 {
+				return fmt.Errorf("at %s: %w", path, ErrNoExportedFields)
+			}
+			stack = stack[:len(stack)-1] // Pop stack
+			return nil
+		case reflect.Chan,
+			reflect.Func,
+			reflect.Interface,
+			reflect.UnsafePointer:
+			return fmt.Errorf("at %s: %w: %s", path, ErrUnsupportedType, tp.String())
+		case reflect.Pointer:
+			tp = tp.Elem()
+			switch tp.Kind() {
+			case reflect.Pointer, reflect.Slice, reflect.Map:
+				return fmt.Errorf("at %s: %w", path, ErrUnsupportedPtrType)
+			}
+			return traverse(path, tp)
+		case reflect.Int:
+			return fmt.Errorf("at %s: %w: %s, %s",
+				path, ErrUnsupportedType, tp.String(),
+				"use integer type with specified width, "+
+					"such as int8, int16, int32 or int64 instead of int")
+		case reflect.Uint:
+			return fmt.Errorf("at %s: %w: %s, %s",
+				path, ErrUnsupportedType, tp.String(),
+				"use unsigned integer type with specified width, "+
+					"such as uint8, uint16, uint32 or uint64 instead of uint")
+		case reflect.Slice, reflect.Array:
+			return traverse(path, tp.Elem())
+		case reflect.Map:
+			if err := traverse(path+"[key]", tp.Key()); err != nil {
+				return err
+			}
+			tp = tp.Elem()
+			if tp.Kind() == reflect.Struct {
+				return fmt.Errorf("at %s: %w: %s, %s",
+					path, ErrUnsupportedType, tp.String(),
+					"use pointer to struct as map value")
+			}
+			return traverse(path+"[value]", tp)
 		}
 		return nil
 	}
@@ -745,7 +745,6 @@ func ValidateType[T any]() error {
 		implementsInterface[yaml.Unmarshaler](tp) {
 		return fmt.Errorf("at %s: %w", n, ErrIllegalRootType)
 	}
-	stack = append(stack, tp)
 	return traverse(n, tp)
 }
 
@@ -778,13 +777,6 @@ func findContentNodeByTag(node *yaml.Node, yamlTag string) *yaml.Node {
 		}
 	}
 	return nil
-}
-
-func firstNonPointer(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	return t
 }
 
 func getYAMLFieldName(t reflect.StructTag) string {

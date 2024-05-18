@@ -496,6 +496,50 @@ recurs:
 			"unsupported type: interface {}", err.Error())
 	})
 
+	t.Run("slice_empty_interface", func(t *testing.T) {
+		type TestConfig struct {
+			Anything []any `yaml:"anything"`
+		}
+
+		_, err := LoadSrc[TestConfig]("anything:\n  - foo\n  - bar")
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t, "at TestConfig.Anything: "+
+			"unsupported type: interface {}", err.Error())
+	})
+
+	t.Run("array_empty_interface", func(t *testing.T) {
+		type TestConfig struct {
+			Anything [2]any `yaml:"anything"`
+		}
+
+		_, err := LoadSrc[TestConfig]("anything:\n  - foo\n  - bar")
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t, "at TestConfig.Anything: "+
+			"unsupported type: interface {}", err.Error())
+	})
+
+	t.Run("map_key_empty_interface", func(t *testing.T) {
+		type TestConfig struct {
+			Anything map[any]string `yaml:"anything"`
+		}
+
+		_, err := LoadSrc[TestConfig]("anything:\n  foo: bar")
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t, "at TestConfig.Anything[key]: "+
+			"unsupported type: interface {}", err.Error())
+	})
+
+	t.Run("map_value_empty_interface", func(t *testing.T) {
+		type TestConfig struct {
+			Anything map[string]any `yaml:"anything"`
+		}
+
+		_, err := LoadSrc[TestConfig]("anything:\n  foo: bar")
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t, "at TestConfig.Anything[value]: "+
+			"unsupported type: interface {}", err.Error())
+	})
+
 	t.Run("map_of_struct", func(t *testing.T) {
 		type Foo struct {
 			Foo string `yaml:"foo"`
@@ -634,7 +678,7 @@ func TestValidateTypeErrYAMLNoInlineOpt(t *testing.T) {
 	})
 }
 
-func TestValidateTypeErrYAmlTagRedefined(t *testing.T) {
+func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 	type TestConfig struct {
 		First  string `yaml:"x"`
 		Second string `yaml:"x"`
@@ -1557,3 +1601,23 @@ func TestLoadTextUnmarshaler(t *testing.T) {
 	require.Equal(t, "t2", *c.U2.Str)
 	require.Equal(t, "t3", c.U1Ptr.Str)
 }
+
+// func TestMergeMap(t *testing.T) {
+// 	type TestConfig struct {
+// 		Map1 map[string]string `yaml:"map1"`
+// 		Map2 map[string]string `yaml:"map2"`
+// 		Map3 map[string]string `yaml:"map3"`
+// 	}
+// 	c, err := LoadSrc[TestConfig](`
+// map1: &map1
+//   foo: bar
+// map2: &map2
+//   bazz: fazz
+// map3:
+//   kraz: fraz
+//   <<: *map1 *map2
+// `)
+// 	require.NoError(t, err)
+// 	require.Equal(t, map[string]string{"foo": "bar"}, c.Map1)
+// 	require.Equal(t, map[string]string{"bazz": "fazz"}, c.Map2)
+// }
