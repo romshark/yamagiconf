@@ -394,11 +394,23 @@ recurs:
 			Int int `yaml:"int"`
 		}
 
-		_, err := LoadSrc[TestConfig](yamlContents)
+		_, err := LoadSrc[TestConfig](`int: 42`)
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
 		require.Equal(t, "at TestConfig.Int: unsupported type: int, "+
 			"use integer type with specified width, "+
-			"such as int32 or int64 instead of int", err.Error())
+			"such as int8, int16, int32 or int64 instead of int", err.Error())
+	})
+
+	t.Run("uint", func(t *testing.T) {
+		type TestConfig struct {
+			Uint uint `yaml:"uint"`
+		}
+
+		_, err := LoadSrc[TestConfig](`uint: 42`)
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
+		require.Equal(t, "at TestConfig.Uint: unsupported type: uint, "+
+			"use unsigned integer type with specified width, "+
+			"such as uint8, uint16, uint32 or uint64 instead of uint", err.Error())
 	})
 
 	t.Run("ptr_ptr", func(t *testing.T) {

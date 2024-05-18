@@ -702,12 +702,16 @@ func ValidateType[T any]() error {
 					reflect.UnsafePointer:
 					return fmt.Errorf("at %s: %w: %s",
 						path+"."+f.Name, ErrUnsupportedType, tp.String())
-				case reflect.Int,
-					reflect.Uint:
+				case reflect.Int:
 					return fmt.Errorf("at %s: %w: %s, %s",
 						path+"."+f.Name, ErrUnsupportedType, tp.String(),
 						"use integer type with specified width, "+
-							"such as int32 or int64 instead of int")
+							"such as int8, int16, int32 or int64 instead of int")
+				case reflect.Uint:
+					return fmt.Errorf("at %s: %w: %s, %s",
+						path+"."+f.Name, ErrUnsupportedType, tp.String(),
+						"use integer type with specified width, "+
+							"such as uint8, uint16, uint32 or uint64 instead of uint")
 				case reflect.Slice, reflect.Array:
 					tp = tp.Elem()
 					continue LOOP
