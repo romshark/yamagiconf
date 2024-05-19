@@ -594,15 +594,16 @@ func validateYAMLValues(
 			}
 		}
 	case reflect.Map:
+		tpKey, tpVal := tp.Key(), tp.Elem()
 		for i := 0; i < len(node.Content); i += 2 {
 			path := fmt.Sprintf("%s[%q]", path, node.Content[i].Value)
 			// Validate key
-			err := validateYAMLValues(anchors, yamlTag, path, tp, node.Content[i])
+			err := validateYAMLValues(anchors, yamlTag, path, tpKey, node.Content[i])
 			if err != nil {
 				return err
 			}
 			// Validate value
-			err = validateYAMLValues(anchors, yamlTag, path, tp, node.Content[i+1])
+			err = validateYAMLValues(anchors, yamlTag, path, tpVal, node.Content[i+1])
 			if err != nil {
 				return err
 			}
