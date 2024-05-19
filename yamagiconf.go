@@ -291,7 +291,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 				return nil
 			} else if vi := asIface[encoding.TextUnmarshaler](v, true); vi != nil {
 				if err := vi.UnmarshalText([]byte(env)); err != nil {
-					return err
+					return errUnmarshalEnv(path, envVar, tp, err)
 				}
 				v.Set(reflect.ValueOf(vi))
 				return nil
@@ -309,7 +309,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			return nil
 		}
 		if err := vi.UnmarshalText([]byte(env)); err != nil {
-			return err
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 	}
 
@@ -320,7 +320,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		d, err := time.ParseDuration(env)
 		if err != nil {
-			return err
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetInt(int64(d))
 		return nil
