@@ -1662,6 +1662,60 @@ ptr-duration-null: null
 	require.Nil(t, c.PtrDurationNull)
 }
 
+func TestLoadEnvVarErr(t *testing.T) {
+	t.Run("map_of_slice", func(t *testing.T) {
+		type Dur struct {
+			Duration time.Duration `yaml:"duration" env:"DURATION"`
+		}
+		type Container struct {
+			Map map[string][]Dur `yaml:"map"`
+		}
+		type TestConfig struct {
+			Container Container `yaml:"container"`
+		}
+		t.Setenv("DURATION", "10minutes") // Invalid time.Duration value
+		_, err := LoadSrc[TestConfig](`
+container:
+  map:
+    foo:
+      - duration: 12s
+    bar:
+      - duration: 12m
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvVar)
+		require.Equal(t, `at TestConfig.Container.Map[bar][0].Duration: `+
+			`invalid env var DURATION: expected time.Duration: time: `+
+			`unknown unit "minutes" in duration "10minutes"`, err.Error())
+	})
+
+	t.Run("map_of_map", func(t *testing.T) {
+		type Dur struct {
+			Duration time.Duration `yaml:"duration" env:"DURATION"`
+		}
+		type Container struct {
+			Map map[string]map[string]*Dur `yaml:"map"`
+		}
+		type TestConfig struct {
+			Container Container `yaml:"container"`
+		}
+		t.Setenv("DURATION", "10minutes") // Invalid time.Duration value
+		_, err := LoadSrc[TestConfig](`
+container:
+  map:
+    foo:
+      fazz:
+        duration: 12s
+    bar:
+      bazz:
+        duration: 12m
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrInvalidEnvVar)
+		require.Equal(t, `at TestConfig.Container.Map[bar][bazz].Duration: `+
+			`invalid env var DURATION: expected time.Duration: time: `+
+			`unknown unit "minutes" in duration "10minutes"`, err.Error())
+	})
+}
+
 func TestLoadErrInvalidEnvVar(t *testing.T) {
 	t.Run("bool", func(t *testing.T) {
 		type TestConfig struct {

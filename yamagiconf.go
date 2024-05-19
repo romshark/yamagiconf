@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -466,16 +467,21 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			}
 		}
 	case reflect.Map:
-		if tp.Elem().Kind() == reflect.Pointer {
-			iter := v.MapRange()
-			for iter.Next() {
-				keyStr := iter.Value().String()
-				path := fmt.Sprintf("%s[%s]", path, keyStr)
-				value := v.MapIndex(iter.Key())
-				err := unmarshalEnv(path, "", value.Elem())
-				if err != nil {
-					return err
-				}
+		keys := v.MapKeys()
+		sort.Slice(keys, func(i, j int) bool {
+			return fmt.Sprint(keys[i].Interface()) < fmt.Sprint(keys[j].Interface())
+		})
+		for _, key := range keys {
+			path := fmt.Sprintf("%s[%s]", path, key.String())
+			value := v.MapIndex(key)
+
+			if tp.Elem().Kind() == reflect.Pointer {
+				value = value.Elem()
+			}
+
+			err := unmarshalEnv(path, "", value)
+			if err != nil {
+				return err
 			}
 		}
 	}
