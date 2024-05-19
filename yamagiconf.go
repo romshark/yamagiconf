@@ -167,17 +167,22 @@ type Validator interface{ Validate() error }
 
 // asIface[I any] returns nil if v doesn't implement the Validator interface
 // neither as a copy- nor as a pointer receiver.
-func asIface[I any](v reflect.Value) (i I) {
+func asIface[I any](v reflect.Value, allocateIfNecessary bool) (i I) {
 	if !v.IsValid() {
 		return i
 	}
 	ti := reflect.TypeOf((*I)(nil)).Elem()
 	tp := v.Type()
-	if tp.Kind() == reflect.Pointer && v.IsNil() {
-		return i
-	}
-	if v.CanInterface() && tp.Implements(ti) {
-		return v.Interface().(I)
+	if tp.Implements(ti) {
+		if tp.Kind() == reflect.Pointer && v.IsNil() {
+			if !allocateIfNecessary {
+				return i
+			}
+			return reflect.New(tp.Elem()).Interface().(I)
+		}
+		if v.CanInterface() {
+			return v.Interface().(I)
+		}
 	}
 	if v.CanAddr() {
 		vp := v.Addr()
@@ -204,7 +209,7 @@ func implementsInterface[I any](t reflect.Type) bool {
 func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 	tp := v.Type()
 
-	if v := asIface[Validator](v); v != nil {
+	if v := asIface[Validator](v, false); v != nil {
 		if err := v.Validate(); err != nil {
 			return fmt.Errorf("at %d:%d: %w: %w",
 				node.Line, node.Column, ErrValidation, err)
@@ -284,20 +289,31 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			if env == "null" {
 				v.Set(reflect.Zero(v.Type()))
 				return nil
+			} else if vi := asIface[encoding.TextUnmarshaler](v, true); vi != nil {
+				if err := vi.UnmarshalText([]byte(env)); err != nil {
+					return err
+				}
+				v.Set(reflect.ValueOf(vi))
+				return nil
 			}
-			tp, v = tp.Elem(), v.Elem()
+			newValue := reflect.New(tp.Elem())
+			v.Set(newValue) // Set pointer
+			v = newValue.Elem()
+			tp = tp.Elem()
 		}
 	}
 
-	if v := asIface[encoding.TextUnmarshaler](v); v != nil {
+	if vi := asIface[encoding.TextUnmarshaler](v, true); vi != nil {
 		env, ok := os.LookupEnv(envVar)
 		if !ok {
 			return nil
 		}
-		return v.UnmarshalText([]byte(env))
+		if err := vi.UnmarshalText([]byte(env)); err != nil {
+			return err
+		}
 	}
 
-	if v.Type() == typeTimeDuration {
+	if tp == typeTimeDuration {
 		env, ok := os.LookupEnv(envVar)
 		if !ok {
 			return nil
@@ -322,7 +338,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		case "false":
 			v.SetBool(false)
 		default:
-			return errUnmarshalEnv(path, envVar, v.Type(), nil)
+			return errUnmarshalEnv(path, envVar, tp, nil)
 		}
 	case reflect.String:
 		env, ok := os.LookupEnv(envVar)
@@ -337,7 +353,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		f, err := strconv.ParseFloat(env, 32)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetFloat(f)
 	case reflect.Float64:
@@ -347,7 +363,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		f, err := strconv.ParseFloat(env, 64)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetFloat(f)
 	case reflect.Int8:
@@ -357,7 +373,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseInt(env, 10, 8)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetInt(int64(i))
 	case reflect.Uint8:
@@ -367,7 +383,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseUint(env, 10, 8)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetUint(uint64(i))
 	case reflect.Int16:
@@ -377,7 +393,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseInt(env, 10, 16)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetInt(int64(i))
 	case reflect.Uint16:
@@ -387,7 +403,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseUint(env, 10, 16)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetUint(uint64(i))
 	case reflect.Int32:
@@ -397,7 +413,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseInt(env, 10, 32)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetInt(int64(i))
 	case reflect.Uint32:
@@ -407,7 +423,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseUint(env, 10, 32)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetUint(uint64(i))
 	case reflect.Int64:
@@ -417,7 +433,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseInt(env, 10, 64)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetInt(int64(i))
 	case reflect.Uint64:
@@ -427,7 +443,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 		i, err := strconv.ParseUint(env, 10, 64)
 		if err != nil {
-			return errUnmarshalEnv(path, envVar, v.Type(), err)
+			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 		v.SetUint(uint64(i))
 	case reflect.Struct:
@@ -444,7 +460,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 	case reflect.Slice, reflect.Array:
 		for i := range v.Len() {
-			err := unmarshalEnv("", fmt.Sprintf("%s[%d]", path, i), v.Index(i))
+			err := unmarshalEnv(fmt.Sprintf("%s[%d]", path, i), "", v.Index(i))
 			if err != nil {
 				return err
 			}
@@ -456,7 +472,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 				keyStr := iter.Value().String()
 				path := fmt.Sprintf("%s[%s]", path, keyStr)
 				value := v.MapIndex(iter.Key())
-				err := unmarshalEnv("", path, value.Elem())
+				err := unmarshalEnv(path, "", value.Elem())
 				if err != nil {
 					return err
 				}

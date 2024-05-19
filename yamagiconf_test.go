@@ -303,6 +303,28 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			"at TestConfig.Wrong: "+
 				"env var on unsupported type: []string", err.Error())
 	})
+
+	t.Run("on_yaml_unmarshaler", func(t *testing.T) {
+		type TestConfig struct {
+			Wrong YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
+		}
+		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
+		require.Equal(t,
+			"at TestConfig.Wrong: env var on unsupported type: "+
+				"yamagiconf_test.YAMLUnmarshaler", err.Error())
+	})
+
+	t.Run("on_ptr_yaml_unmarshaler", func(t *testing.T) {
+		type TestConfig struct {
+			Wrong *YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
+		}
+		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
+		require.Equal(t,
+			"at TestConfig.Wrong: env var on unsupported type: "+
+				"*yamagiconf_test.YAMLUnmarshaler", err.Error())
+	})
 }
 
 type TestConfigRecurThroughContainerPtr struct {
@@ -1252,28 +1274,68 @@ func TestLoadEnvVar(t *testing.T) {
 	}
 	type Map2D = map[string]map[string]string
 	type TestConfig struct {
-		BoolFalse     bool            `yaml:"bool_false" env:"BOOL_FALSE"`
-		BoolTrue      bool            `yaml:"bool_true" env:"BOOL_TRUE"`
-		String        string          `yaml:"string" env:"STRING"`
-		Float32       float32         `yaml:"float32" env:"FLOAT_32"`
-		Float64       float64         `yaml:"float64" env:"FLOAT_64"`
-		Int8          int8            `yaml:"int8" env:"INT_8"`
-		Uint8         uint8           `yaml:"uint8" env:"UINT_8"`
-		Int16         int16           `yaml:"int16" env:"INT_16"`
-		Uint16        uint16          `yaml:"uint16" env:"UINT_16"`
-		Int32         int32           `yaml:"int32" env:"INT_32"`
-		Uint32        uint32          `yaml:"uint32" env:"UINT_32"`
-		Int64         int64           `yaml:"int64" env:"INT_64"`
-		Uint64        uint64          `yaml:"uint64" env:"UINT_64"`
-		PtrUint64     *uint64         `yaml:"ptr-uint64" env:"PTR_UINT_64"`
-		PtrUint64Null *uint64         `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
-		MapFoo        map[string]*Foo `yaml:"map-foo"`
-		SliceFoo      []Foo           `yaml:"slice-foo"`
-		ArrayFoo      [1]Foo          `yaml:"array-foo"`
-		Map2D         Map2D           `yaml:"map-2d"`
-		Time          time.Time       `yaml:"time" env:"TIME"`
-		Duration      time.Duration   `yaml:"duration" env:"DURATION"`
+		BoolFalse bool          `yaml:"bool_false" env:"BOOL_FALSE"`
+		BoolTrue  bool          `yaml:"bool_true" env:"BOOL_TRUE"`
+		String    string        `yaml:"string" env:"STRING"`
+		Float32   float32       `yaml:"float32" env:"FLOAT_32"`
+		Float64   float64       `yaml:"float64" env:"FLOAT_64"`
+		Int8      int8          `yaml:"int8" env:"INT_8"`
+		Uint8     uint8         `yaml:"uint8" env:"UINT_8"`
+		Int16     int16         `yaml:"int16" env:"INT_16"`
+		Uint16    uint16        `yaml:"uint16" env:"UINT_16"`
+		Int32     int32         `yaml:"int32" env:"INT_32"`
+		Uint32    uint32        `yaml:"uint32" env:"UINT_32"`
+		Int64     int64         `yaml:"int64" env:"INT_64"`
+		Uint64    uint64        `yaml:"uint64" env:"UINT_64"`
+		Time      time.Time     `yaml:"time" env:"TIME"`
+		Duration  time.Duration `yaml:"duration" env:"DURATION"`
+
+		PtrBoolFalse *bool          `yaml:"ptr-bool_false" env:"PTR_BOOL_FALSE"`
+		PtrBoolTrue  *bool          `yaml:"ptr-bool_true" env:"PTR_BOOL_TRUE"`
+		PtrString    *string        `yaml:"ptr-string" env:"PTR_STRING"`
+		PtrFloat32   *float32       `yaml:"ptr-float32" env:"PTR_FLOAT_32"`
+		PtrFloat64   *float64       `yaml:"ptr-float64" env:"PTR_FLOAT_64"`
+		PtrInt8      *int8          `yaml:"ptr-int8" env:"PTR_INT_8"`
+		PtrUint8     *uint8         `yaml:"ptr-uint8" env:"PTR_UINT_8"`
+		PtrInt16     *int16         `yaml:"ptr-int16" env:"PTR_INT_16"`
+		PtrUint16    *uint16        `yaml:"ptr-uint16" env:"PTR_UINT_16"`
+		PtrInt32     *int32         `yaml:"ptr-int32" env:"PTR_INT_32"`
+		PtrUint32    *uint32        `yaml:"ptr-uint32" env:"PTR_UINT_32"`
+		PtrInt64     *int64         `yaml:"ptr-int64" env:"PTR_INT_64"`
+		PtrUint64    *uint64        `yaml:"ptr-uint64" env:"PTR_UINT_64"`
+		PtrTime      *time.Time     `yaml:"ptr-time" env:"PTR_TIME"`
+		PtrDuration  *time.Duration `yaml:"ptr-duration" env:"PTR_DURATION"`
+
+		PtrBoolNull     *bool          `yaml:"ptr-bool-null" env:"PTR_BOOL_NULL"`
+		PtrStringNull   *string        `yaml:"ptr-string-null" env:"PTR_STRING_NULL"`
+		PtrFloat32Null  *float32       `yaml:"ptr-float32-null" env:"PTR_FLOAT_32_NULL"`
+		PtrFloat64Null  *float64       `yaml:"ptr-float64-null" env:"PTR_FLOAT_64_NULL"`
+		PtrInt8Null     *int8          `yaml:"ptr-int8-null" env:"PTR_INT_8_NULL"`
+		PtrUint8Null    *uint8         `yaml:"ptr-uint8-null" env:"PTR_UINT_8_NULL"`
+		PtrInt16Null    *int16         `yaml:"ptr-int16-null" env:"PTR_INT_16_NULL"`
+		PtrUint16Null   *uint16        `yaml:"ptr-uint16-null" env:"PTR_UINT_16_NULL"`
+		PtrInt32Null    *int32         `yaml:"ptr-int32-null" env:"PTR_INT_32_NULL"`
+		PtrUint32Null   *uint32        `yaml:"ptr-uint32-null" env:"PTR_UINT_32_NULL"`
+		PtrInt64Null    *int64         `yaml:"ptr-int64-null" env:"PTR_INT_64_NULL"`
+		PtrUint64Null   *uint64        `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		PtrTimeNull     *time.Time     `yaml:"ptr-time-null" env:"PTR_TIME_NULL"`
+		PtrDurationNull *time.Duration `yaml:"ptr-duration-null" env:"PTR_DURATION_NULL"`
+
+		Foo      Foo             `yaml:"foo"`
+		MapFoo   map[string]*Foo `yaml:"map-foo"`
+		SliceFoo []Foo           `yaml:"slice-foo"`
+		ArrayFoo [1]Foo          `yaml:"array-foo"`
+		Map2D    Map2D           `yaml:"map-2d"`
+
+		UnmarshalerText    TextUnmarshaler  `yaml:"unm-text" env:"UNMARSH_TEXT"`
+		PtrUnmarshalerText *TextUnmarshaler `yaml:"ptr-unm-text" env:"PTR_UNMARSH_TEXT"`
+
+		// ignored must be ignored by yamagiconf even though it's
+		// of type int which is unsupported.
+		//lint:ignore U1000 no need to use it.
+		ignored int
 	}
+
 	t.Setenv("BOOL_FALSE", "false")
 	t.Setenv("BOOL_TRUE", "true")
 	t.Setenv("STRING", "test text")
@@ -1287,11 +1349,44 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("UINT_32", "1")
 	t.Setenv("INT_64", "-1")
 	t.Setenv("UINT_64", "1")
-	t.Setenv("PTR_UINT_64", "1")
-	t.Setenv("PTR_UINT_64_NULL", "null")
-	t.Setenv("FOO", "bar")
 	t.Setenv("TIME", "2000-10-10T10:10:10Z")
 	t.Setenv("DURATION", "30m")
+
+	t.Setenv("PTR_BOOL_FALSE", "false")
+	t.Setenv("PTR_BOOL_TRUE", "true")
+	t.Setenv("PTR_STRING", "test text")
+	t.Setenv("PTR_FLOAT_32", "3.14")
+	t.Setenv("PTR_FLOAT_64", "3.1415")
+	t.Setenv("PTR_INT_8", "-1")
+	t.Setenv("PTR_UINT_8", "1")
+	t.Setenv("PTR_INT_16", "-1")
+	t.Setenv("PTR_UINT_16", "1")
+	t.Setenv("PTR_INT_32", "-1")
+	t.Setenv("PTR_UINT_32", "1")
+	t.Setenv("PTR_INT_64", "-1")
+	t.Setenv("PTR_UINT_64", "1")
+	t.Setenv("PTR_TIME", "2000-10-10T10:10:10Z")
+	t.Setenv("PTR_DURATION", "12s")
+
+	t.Setenv("PTR_BOOL_NULL", "null")
+	t.Setenv("PTR_STRING_NULL", "null")
+	t.Setenv("PTR_FLOAT_32_NULL", "null")
+	t.Setenv("PTR_FLOAT_64_NULL", "null")
+	t.Setenv("PTR_INT_8_NULL", "null")
+	t.Setenv("PTR_UINT_8_NULL", "null")
+	t.Setenv("PTR_INT_16_NULL", "null")
+	t.Setenv("PTR_UINT_16_NULL", "null")
+	t.Setenv("PTR_INT_32_NULL", "null")
+	t.Setenv("PTR_UINT_32_NULL", "null")
+	t.Setenv("PTR_INT_64_NULL", "null")
+	t.Setenv("PTR_UINT_64_NULL", "null")
+	t.Setenv("PTR_TIME_NULL", "null")
+	t.Setenv("PTR_DURATION_NULL", "null")
+
+	t.Setenv("FOO", "bar")
+	t.Setenv("UNMARSH_TEXT", "ut")
+	t.Setenv("PTR_UNMARSH_TEXT", "ptr_ut")
+
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
 bool_true: false
@@ -1306,8 +1401,42 @@ int32: 0
 uint32: 0
 int64: 0
 uint64: 0
+time: 1999-10-10T10:10:10Z
+duration: 0s
+
+ptr-bool_false: true
+ptr-bool_true: false
+ptr-string: ''
+ptr-float32: 0
+ptr-float64: 0
+ptr-int8: 0
+ptr-uint8: 0
+ptr-int16: 0
+ptr-uint16: 0
+ptr-int32: 0
+ptr-uint32: 0
+ptr-int64: 0
 ptr-uint64: 0
+ptr-time: 1999-10-10T10:10:10Z
+ptr-duration: 0s
+
+ptr-bool-null: true
+ptr-string-null: ''
+ptr-float32-null: 0
+ptr-float64-null: 0
+ptr-int8-null: 0
+ptr-uint8-null: 0
+ptr-int16-null: 0
+ptr-uint16-null: 0
+ptr-int32-null: 0
+ptr-uint32-null: 0
+ptr-int64-null: 0
 ptr-uint64-null: 0
+ptr-time-null: 1999-10-10T10:10:10Z
+ptr-duration-null: 0s
+
+foo:
+  foo: foo
 map-foo:
   key:
     foo: fuzz
@@ -1322,10 +1451,11 @@ map-2d:
     muzz: tazz
   kraz:
     fraz: sazz
-time: 2024-01-01T01:01:01Z
-duration: 10s
+unm-text: x
+ptr-unm-text: null
 `)
 	require.NoError(t, err)
+
 	require.Equal(t, false, c.BoolFalse)
 	require.Equal(t, true, c.BoolTrue)
 	require.Equal(t, "test text", c.String)
@@ -1339,8 +1469,41 @@ duration: 10s
 	require.Equal(t, uint32(1), c.Uint32)
 	require.Equal(t, int64(-1), c.Int64)
 	require.Equal(t, uint64(1), c.Uint64)
+	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
+	require.Equal(t, 30*time.Minute, c.Duration)
+
+	require.Equal(t, false, *c.PtrBoolFalse)
+	require.Equal(t, true, *c.PtrBoolTrue)
+	require.Equal(t, "test text", *c.PtrString)
+	require.Equal(t, float32(3.14), *c.PtrFloat32)
+	require.Equal(t, float64(3.1415), *c.PtrFloat64)
+	require.Equal(t, int8(-1), *c.PtrInt8)
+	require.Equal(t, uint8(1), *c.PtrUint8)
+	require.Equal(t, int16(-1), *c.PtrInt16)
+	require.Equal(t, uint16(1), *c.PtrUint16)
+	require.Equal(t, int32(-1), *c.PtrInt32)
+	require.Equal(t, uint32(1), *c.PtrUint32)
+	require.Equal(t, int64(-1), *c.PtrInt64)
 	require.Equal(t, uint64(1), *c.PtrUint64)
+	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), *c.PtrTime)
+	require.Equal(t, 12*time.Second, *c.PtrDuration)
+
+	require.Nil(t, c.PtrBoolNull)
+	require.Nil(t, c.PtrStringNull)
+	require.Nil(t, c.PtrFloat32Null)
+	require.Nil(t, c.PtrFloat64Null)
+	require.Nil(t, c.PtrInt8Null)
+	require.Nil(t, c.PtrUint8Null)
+	require.Nil(t, c.PtrInt16Null)
+	require.Nil(t, c.PtrUint16Null)
+	require.Nil(t, c.PtrInt32Null)
+	require.Nil(t, c.PtrUint32Null)
+	require.Nil(t, c.PtrInt64Null)
 	require.Nil(t, c.PtrUint64Null)
+	require.Nil(t, c.PtrTimeNull)
+	require.Nil(t, c.PtrDurationNull)
+
+	require.Equal(t, Foo{Foo: "bar"}, c.Foo)
 	require.Equal(t, map[string]*Foo{"key": {Foo: "bar"}}, c.MapFoo)
 	require.Equal(t, []Foo{{Foo: "bar"}, {Foo: "bar"}}, c.SliceFoo)
 	require.Equal(t, [1]Foo{{Foo: "bar"}}, c.ArrayFoo)
@@ -1348,29 +1511,58 @@ duration: 10s
 		"foo":  {"bar": "bazz", "muzz": "tazz"},
 		"kraz": {"fraz": "sazz"},
 	}, c.Map2D)
-	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
-	require.Equal(t, 30*time.Minute, c.Duration)
+	require.Equal(t, "ut", c.UnmarshalerText.Str)
+	require.Equal(t, "ptr_ut", c.PtrUnmarshalerText.Str)
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {
 	type TestConfig struct {
-		BoolFalse     bool          `yaml:"bool_false" env:"BOOL_FALSE"`
-		BoolTrue      bool          `yaml:"bool_true" env:"BOOL_TRUE"`
-		String        string        `yaml:"string" env:"STRING"`
-		Float32       float32       `yaml:"float32" env:"FLOAT_32"`
-		Float64       float64       `yaml:"float64" env:"FLOAT_64"`
-		Int8          int8          `yaml:"int8" env:"INT_8"`
-		Uint8         uint8         `yaml:"uint8" env:"UINT_8"`
-		Int16         int16         `yaml:"int16" env:"INT_16"`
-		Uint16        uint16        `yaml:"uint16" env:"UINT_16"`
-		Int32         int32         `yaml:"int32" env:"INT_32"`
-		Uint32        uint32        `yaml:"uint32" env:"UINT_32"`
-		Int64         int64         `yaml:"int64" env:"INT_64"`
-		Uint64        uint64        `yaml:"uint64" env:"UINT_64"`
-		PtrUint64     *uint64       `yaml:"ptr-uint64" env:"PTR_UINT_64"`
-		PtrUint64Null *uint64       `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
-		Time          time.Time     `yaml:"time" env:"TIME"`
-		Duration      time.Duration `yaml:"duration" env:"DURATION"`
+		BoolFalse bool          `yaml:"bool_false" env:"BOOL_FALSE"`
+		BoolTrue  bool          `yaml:"bool_true" env:"BOOL_TRUE"`
+		String    string        `yaml:"string" env:"STRING"`
+		Float32   float32       `yaml:"float32" env:"FLOAT_32"`
+		Float64   float64       `yaml:"float64" env:"FLOAT_64"`
+		Int8      int8          `yaml:"int8" env:"INT_8"`
+		Uint8     uint8         `yaml:"uint8" env:"UINT_8"`
+		Int16     int16         `yaml:"int16" env:"INT_16"`
+		Uint16    uint16        `yaml:"uint16" env:"UINT_16"`
+		Int32     int32         `yaml:"int32" env:"INT_32"`
+		Uint32    uint32        `yaml:"uint32" env:"UINT_32"`
+		Int64     int64         `yaml:"int64" env:"INT_64"`
+		Uint64    uint64        `yaml:"uint64" env:"UINT_64"`
+		Time      time.Time     `yaml:"time" env:"TIME"`
+		Duration  time.Duration `yaml:"duration" env:"DURATION"`
+
+		PtrBoolFalse *bool          `yaml:"ptr-bool_false" env:"PTR_BOOL_FALSE"`
+		PtrBoolTrue  *bool          `yaml:"ptr-bool_true" env:"PTR_BOOL_TRUE"`
+		PtrString    *string        `yaml:"ptr-string" env:"PTR_STRING"`
+		PtrFloat32   *float32       `yaml:"ptr-float32" env:"PTR_FLOAT_32"`
+		PtrFloat64   *float64       `yaml:"ptr-float64" env:"PTR_FLOAT_64"`
+		PtrInt8      *int8          `yaml:"ptr-int8" env:"PTR_INT_8"`
+		PtrUint8     *uint8         `yaml:"ptr-uint8" env:"PTR_UINT_8"`
+		PtrInt16     *int16         `yaml:"ptr-int16" env:"PTR_INT_16"`
+		PtrUint16    *uint16        `yaml:"ptr-uint16" env:"PTR_UINT_16"`
+		PtrInt32     *int32         `yaml:"ptr-int32" env:"PTR_INT_32"`
+		PtrUint32    *uint32        `yaml:"ptr-uint32" env:"PTR_UINT_32"`
+		PtrInt64     *int64         `yaml:"ptr-int64" env:"PTR_INT_64"`
+		PtrUint64    *uint64        `yaml:"ptr-uint64" env:"PTR_UINT_64"`
+		PtrTime      *time.Time     `yaml:"ptr-time" env:"PTR_TIME"`
+		PtrDuration  *time.Duration `yaml:"ptr-duration" env:"PTR_DURATION"`
+
+		PtrBoolNull     *bool          `yaml:"ptr-bool-null" env:"PTR_BOOL_NULL"`
+		PtrStringNull   *string        `yaml:"ptr-string-null" env:"PTR_STRING_NULL"`
+		PtrFloat32Null  *float32       `yaml:"ptr-float32-null" env:"PTR_FLOAT_32_NULL"`
+		PtrFloat64Null  *float64       `yaml:"ptr-float64-null" env:"PTR_FLOAT_64_NULL"`
+		PtrInt8Null     *int8          `yaml:"ptr-int8-null" env:"PTR_INT_8_NULL"`
+		PtrUint8Null    *uint8         `yaml:"ptr-uint8-null" env:"PTR_UINT_8_NULL"`
+		PtrInt16Null    *int16         `yaml:"ptr-int16-null" env:"PTR_INT_16_NULL"`
+		PtrUint16Null   *uint16        `yaml:"ptr-uint16-null" env:"PTR_UINT_16_NULL"`
+		PtrInt32Null    *int32         `yaml:"ptr-int32-null" env:"PTR_INT_32_NULL"`
+		PtrUint32Null   *uint32        `yaml:"ptr-uint32-null" env:"PTR_UINT_32_NULL"`
+		PtrInt64Null    *int64         `yaml:"ptr-int64-null" env:"PTR_INT_64_NULL"`
+		PtrUint64Null   *uint64        `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
+		PtrTimeNull     *time.Time     `yaml:"ptr-time-null" env:"PTR_TIME_NULL"`
+		PtrDurationNull *time.Duration `yaml:"ptr-duration-null" env:"PTR_DURATION_NULL"`
 	}
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
@@ -1386,12 +1578,42 @@ int32: 0
 uint32: 0
 int64: 0
 uint64: 0
-ptr-uint64: 0
-ptr-uint64-null: null
 time: 2024-01-01T01:01:01Z
 duration: 10s
+
+ptr-bool_false: true
+ptr-bool_true: false
+ptr-string: ''
+ptr-float32: 0
+ptr-float64: 0
+ptr-int8: 0
+ptr-uint8: 0
+ptr-int16: 0
+ptr-uint16: 0
+ptr-int32: 0
+ptr-uint32: 0
+ptr-int64: 0
+ptr-uint64: 0
+ptr-time: 2024-01-01T01:01:01Z
+ptr-duration: 10s
+
+ptr-bool-null: null
+ptr-string-null: null
+ptr-float32-null: null
+ptr-float64-null: null
+ptr-int8-null: null
+ptr-uint8-null: null
+ptr-int16-null: null
+ptr-uint16-null: null
+ptr-int32-null: null
+ptr-uint32-null: null
+ptr-int64-null: null
+ptr-uint64-null: null
+ptr-time-null: null
+ptr-duration-null: null
 `)
 	require.NoError(t, err)
+
 	require.Equal(t, true, c.BoolFalse)
 	require.Equal(t, false, c.BoolTrue)
 	require.Equal(t, "", c.String)
@@ -1405,10 +1627,39 @@ duration: 10s
 	require.Equal(t, uint32(0), c.Uint32)
 	require.Equal(t, int64(0), c.Int64)
 	require.Equal(t, uint64(0), c.Uint64)
-	require.Equal(t, uint64(0), *c.PtrUint64)
-	require.Nil(t, c.PtrUint64Null)
 	require.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), c.Time)
 	require.Equal(t, 10*time.Second, c.Duration)
+
+	require.Equal(t, true, *c.PtrBoolFalse)
+	require.Equal(t, false, *c.PtrBoolTrue)
+	require.Equal(t, "", *c.PtrString)
+	require.Equal(t, float32(0), *c.PtrFloat32)
+	require.Equal(t, float64(0), *c.PtrFloat64)
+	require.Equal(t, int8(0), *c.PtrInt8)
+	require.Equal(t, uint8(0), *c.PtrUint8)
+	require.Equal(t, int16(0), *c.PtrInt16)
+	require.Equal(t, uint16(0), *c.PtrUint16)
+	require.Equal(t, int32(0), *c.PtrInt32)
+	require.Equal(t, uint32(0), *c.PtrUint32)
+	require.Equal(t, int64(0), *c.PtrInt64)
+	require.Equal(t, uint64(0), *c.PtrUint64)
+	require.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), *c.PtrTime)
+	require.Equal(t, 10*time.Second, *c.PtrDuration)
+
+	require.Nil(t, c.PtrBoolNull)
+	require.Nil(t, c.PtrStringNull)
+	require.Nil(t, c.PtrFloat32Null)
+	require.Nil(t, c.PtrFloat64Null)
+	require.Nil(t, c.PtrInt8Null)
+	require.Nil(t, c.PtrUint8Null)
+	require.Nil(t, c.PtrInt16Null)
+	require.Nil(t, c.PtrUint16Null)
+	require.Nil(t, c.PtrInt32Null)
+	require.Nil(t, c.PtrUint32Null)
+	require.Nil(t, c.PtrInt64Null)
+	require.Nil(t, c.PtrUint64Null)
+	require.Nil(t, c.PtrTimeNull)
+	require.Nil(t, c.PtrDurationNull)
 }
 
 func TestLoadErrInvalidEnvVar(t *testing.T) {
