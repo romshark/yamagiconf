@@ -25,21 +25,26 @@ func LoadSrc[T any](src string) (*T, error) {
 }
 
 func TestLoadFile(t *testing.T) {
+	type Container struct {
+		AnyString string `yaml:"any-string"`
+	}
 	type Embedded struct {
-		AnyString         string            `yaml:"any-string"`
-		NotATag           string            `yaml:"not-a-tag"`
-		StrQuotedNull     string            `yaml:"str-quoted-null"`
-		StrDubQuotNull    string            `yaml:"str-doublequoted-null"`
-		StrBlockNull      string            `yaml:"str-block-null"`
-		StrFoldBlockNull  string            `yaml:"str-foldblock-null"`
-		RequiredString    string            `yaml:"required-string" validate:"required"`
-		MapStringString   map[string]string `yaml:"map-string-string"`
-		MapInt16Int16     map[int16]int16   `yaml:"map-int16-int16"`
-		MapInt16Int16Null map[int16]int16   `yaml:"map-int16-int16-null"`
-		SliceStr          []string          `yaml:"slice-str"`
-		SliceInt64        []int64           `yaml:"slice-int64"`
-		SliceInt64Null    []int64           `yaml:"slice-int64-null"`
-		Time              time.Time         `yaml:"time"`
+		AnyString         string                `yaml:"any-string"`
+		NotATag           string                `yaml:"not-a-tag"`
+		StrQuotedNull     string                `yaml:"str-quoted-null"`
+		StrDubQuotNull    string                `yaml:"str-doublequoted-null"`
+		StrBlockNull      string                `yaml:"str-block-null"`
+		StrFoldBlockNull  string                `yaml:"str-foldblock-null"`
+		RequiredString    string                `yaml:"required-string" validate:"required"`
+		MapStringString   map[string]string     `yaml:"map-string-string"`
+		MapInt16Int16     map[int16]int16       `yaml:"map-int16-int16"`
+		MapInt16Int16Null map[int16]int16       `yaml:"map-int16-int16-null"`
+		MapContainer      map[string]Container  `yaml:"map-string-container"`
+		MapContainerNull  map[string]*Container `yaml:"map-string-ptr-container"`
+		SliceStr          []string              `yaml:"slice-str"`
+		SliceInt64        []int64               `yaml:"slice-int64"`
+		SliceInt64Null    []int64               `yaml:"slice-int64-null"`
+		Time              time.Time             `yaml:"time"`
 
 		UnmarshalerYAML        YAMLUnmarshaler  `yaml:"unmarshaler-yaml"`
 		UnmarshalerText        TextUnmarshaler  `yaml:"unmarshaler-text"`
@@ -52,9 +57,6 @@ func TestLoadFile(t *testing.T) {
 		// of type int which is unsupported.
 		//lint:ignore U1000 no need to use it.
 		ignored int
-	}
-	type Container struct {
-		AnyString string `yaml:"any-string"`
 	}
 	type TestConfig struct {
 		Embedded  `yaml:",inline"`
@@ -74,6 +76,15 @@ str-block-null: |
 str-foldblock-null: >
   null
 required-string: 'OK'
+map-string-container:
+  foo:
+    any-string: foo
+  bar:
+    any-string: bar
+map-string-ptr-container:
+  foo:
+    any-string: foo
+  bar: null
 slice-str:
   - 1
   - 2
@@ -115,6 +126,14 @@ enabled: true`), 0o664)
 	require.Equal(t, map[string]string{"foo": "val", "bazz": "val"}, c.MapStringString)
 	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapInt16Int16)
 	require.Nil(t, c.MapInt16Int16Null)
+	require.Equal(t, map[string]Container{
+		"foo": {AnyString: "foo"},
+		"bar": {AnyString: "bar"},
+	}, c.MapContainer)
+	require.Equal(t, map[string]*Container{
+		"foo": {AnyString: "foo"},
+		"bar": nil,
+	}, c.MapContainerNull)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
 	require.Nil(t, c.SliceInt64Null)
@@ -491,6 +510,28 @@ recurs:
 		require.Equal(t, "at TestConfig.PtrPtr: unsupported pointer type", err.Error())
 	})
 
+	t.Run("ptr_ptr_in_slice", func(t *testing.T) {
+		type TestConfig struct {
+			Slice []**int `yaml:"slice"`
+		}
+
+		_, err := LoadSrc[TestConfig](yamlContents)
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedPtrType)
+		require.Equal(t, "at TestConfig.Slice: unsupported pointer type", err.Error())
+	})
+
+	t.Run("ptr_ptr_in_map", func(t *testing.T) {
+		type TestConfig struct {
+			Map map[string]**int `yaml:"map"`
+		}
+
+		_, err := LoadSrc[TestConfig](yamlContents)
+		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedPtrType)
+		require.Equal(t,
+			"at TestConfig.Map[value]: unsupported pointer type",
+			err.Error())
+	})
+
 	t.Run("ptr_slice", func(t *testing.T) {
 		type TestConfig struct {
 			PtrSlice *[]string `yaml:"ptr-slice"`
@@ -606,22 +647,6 @@ recurs:
 		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
 		require.Equal(t, "at TestConfig.Anything[value]: "+
 			"unsupported type: interface {}", err.Error())
-	})
-
-	t.Run("map_of_struct", func(t *testing.T) {
-		type Foo struct {
-			Foo string `yaml:"foo"`
-		}
-		type TestConfig struct {
-			Map map[string]Foo `yaml:"map"`
-		}
-
-		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrUnsupportedType)
-		require.Equal(t,
-			"at TestConfig.Map: unsupported type: yamagiconf_test.Foo, "+
-				"use pointer to struct as map value",
-			err.Error())
 	})
 }
 
@@ -1381,11 +1406,12 @@ func TestLoadEnvVar(t *testing.T) {
 		PtrTimeNull     *time.Time     `yaml:"ptr-time-null" env:"PTR_TIME_NULL"`
 		PtrDurationNull *time.Duration `yaml:"ptr-duration-null" env:"PTR_DURATION_NULL"`
 
-		Foo      Foo             `yaml:"foo"`
-		MapFoo   map[string]*Foo `yaml:"map-foo"`
-		SliceFoo []Foo           `yaml:"slice-foo"`
-		ArrayFoo [1]Foo          `yaml:"array-foo"`
-		Map2D    Map2D           `yaml:"map-2d"`
+		Foo       Foo             `yaml:"foo"`
+		MapFoo    map[string]Foo  `yaml:"map-foo"`
+		MapPtrFoo map[string]*Foo `yaml:"map-ptr-foo"`
+		SliceFoo  []Foo           `yaml:"slice-foo"`
+		ArrayFoo  [1]Foo          `yaml:"array-foo"`
+		Map2D     Map2D           `yaml:"map-2d"`
 
 		UnmarshalerText    TextUnmarshaler  `yaml:"unm-text" env:"UNMARSH_TEXT"`
 		PtrUnmarshalerText *TextUnmarshaler `yaml:"ptr-unm-text" env:"PTR_UNMARSH_TEXT"`
@@ -1500,6 +1526,10 @@ foo:
 map-foo:
   key:
     foo: fuzz
+map-ptr-foo:
+  bar:
+    foo: fuzz
+  bazz: null
 slice-foo:
   - foo: fuzz
   - foo: fuzz
@@ -1564,7 +1594,11 @@ ptr-unm-text: null
 	require.Nil(t, c.PtrDurationNull)
 
 	require.Equal(t, Foo{Foo: "bar"}, c.Foo)
-	require.Equal(t, map[string]*Foo{"key": {Foo: "bar"}}, c.MapFoo)
+	require.Equal(t, map[string]Foo{"key": {Foo: "bar"}}, c.MapFoo)
+	require.Equal(t, map[string]*Foo{
+		"bar":  {Foo: "bar"},
+		"bazz": nil,
+	}, c.MapPtrFoo)
 	require.Equal(t, []Foo{{Foo: "bar"}, {Foo: "bar"}}, c.SliceFoo)
 	require.Equal(t, [1]Foo{{Foo: "bar"}}, c.ArrayFoo)
 	require.Equal(t, Map2D{

@@ -33,7 +33,6 @@ an error annotated with line and column in the YAML file if necessary.
 	- ❗️ Requires `env` struct tags to be POSIX-style.
 	- 🚫 Forbids the use of `env` struct tag on non-primitive fields
 	(allows only floats, ints, strings, bool).
-	- 🚫 Forbids non-pointer struct map values.
 	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
 	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
 	- 🚫 Forbids the use of YAML tag option `"inline"` for non-embedded structs and

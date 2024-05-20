@@ -68,8 +68,7 @@ var (
 //   - T is recursive.
 //   - T contains any unsupported types (signed and unsigned integers with unspecified
 //     width, interface (including `any`), function, channel,
-//     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map,
-//     map with non-pointer struct value).
+//     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map).
 //   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
 //   - T contains any structs with no exported fields.
 //   - T contains any structs with yaml and/or env tags assigned to unexported fields.
@@ -217,6 +216,9 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 		}
 	}
 	for tp.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return nil
+		}
 		tp, v = tp.Elem(), v.Elem()
 	}
 
@@ -476,13 +478,22 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			value := v.MapIndex(key)
 
 			if tp.Elem().Kind() == reflect.Pointer {
-				value = value.Elem()
+				if value.IsNil() {
+					continue
+				}
+				if err := unmarshalEnv(path, "", value.Elem()); err != nil {
+					return err
+				}
+				continue
 			}
 
-			err := unmarshalEnv(path, "", value)
-			if err != nil {
+			val := reflect.New(value.Type()).Elem()
+			val.Set(value)
+
+			if err := unmarshalEnv(path, "", val); err != nil {
 				return err
 			}
+			v.SetMapIndex(key, val)
 		}
 	}
 	return nil
@@ -745,13 +756,7 @@ func ValidateType[T any]() error {
 			if err := traverse(path+"[key]", tp.Key()); err != nil {
 				return err
 			}
-			tp = tp.Elem()
-			if tp.Kind() == reflect.Struct {
-				return fmt.Errorf("at %s: %w: %s, %s",
-					path, ErrUnsupportedType, tp.String(),
-					"use pointer to struct as map value")
-			}
-			return traverse(path+"[value]", tp)
+			return traverse(path+"[value]", tp.Elem())
 		}
 		return nil
 	}
