@@ -44,6 +44,7 @@ func TestLoadFile(t *testing.T) {
 		SliceStr          []string              `yaml:"slice-str"`
 		SliceInt64        []int64               `yaml:"slice-int64"`
 		SliceInt64Null    []int64               `yaml:"slice-int64-null"`
+		SliceSliceString  [][]string            `yaml:"slice-slice-string"`
 		Time              time.Time             `yaml:"time"`
 
 		UnmarshalerYAML        YAMLUnmarshaler  `yaml:"unmarshaler-yaml"`
@@ -91,6 +92,10 @@ slice-str:
   - 3
 slice-int64: [1, 2, 3]
 slice-int64-null: null
+slice-slice-string:
+  - - first
+    - second
+  - - third
 map-string-string:
   foo: &test-anchor val
   bazz: *test-anchor
@@ -137,6 +142,7 @@ enabled: true`), 0o664)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
 	require.Nil(t, c.SliceInt64Null)
+	require.Equal(t, [][]string{{"first", "second"}, {"third"}}, c.SliceSliceString)
 	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
 	require.Equal(t, `YAML unmarshaler non-pointer non-null`, c.UnmarshalerYAML.Str)
 	require.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
