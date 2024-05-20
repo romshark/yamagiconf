@@ -127,6 +127,52 @@ enabled: true`), 0o664)
 	require.Nil(t, c.PtrUnmarshalerTextNull)
 }
 
+func TestLoadErrInvalidUTF8(t *testing.T) {
+	type TestConfig struct {
+		Str string `yaml:"str"`
+	}
+
+	t.Run("control_char_in_string", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("str: abc\u0000defg")
+		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
+		require.Equal(t,
+			`malformed YAML: yaml: control characters are not allowed`,
+			err.Error())
+	})
+
+	t.Run("control_char_in_key", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("s\u0000tr: abcdefg")
+		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
+		require.Equal(t,
+			`malformed YAML: yaml: control characters are not allowed`,
+			err.Error())
+	})
+
+	t.Run("overlong_encoding_of_U+0000", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("\xc0\x80: not ok")
+		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
+		require.Equal(t,
+			`malformed YAML: yaml: invalid length of a UTF-8 sequence`,
+			err.Error())
+	})
+
+	t.Run("surrogate_half_U+D800_U+DFFF", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("\xed\xa0\x80: not ok")
+		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
+		require.Equal(t,
+			`malformed YAML: yaml: invalid Unicode character`,
+			err.Error())
+	})
+
+	t.Run("code_point_beyond_max_unicode_value", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("\xef\xbf\xff: not ok")
+		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
+		require.Equal(t,
+			`malformed YAML: yaml: invalid trailing UTF-8 octet`,
+			err.Error())
+	})
+}
+
 func TestLoadErrYAMLAnchorRedefined(t *testing.T) {
 	type Container struct {
 		One string `yaml:"one"`
