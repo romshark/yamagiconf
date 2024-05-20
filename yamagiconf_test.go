@@ -693,6 +693,20 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			err.Error())
 	})
 
+	t.Run("after_other_struct_tags", func(t *testing.T) {
+		type Container struct {
+			Str string `yaml:"str"`
+		}
+		type TestConfig struct {
+			Container Container `yaml:",omitempty,inline"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		require.Equal(t,
+			"at TestConfig.Container: inline yaml on non-embedded field",
+			err.Error())
+	})
+
 	t.Run("string", func(t *testing.T) {
 		type TestConfig struct {
 			Str string `yaml:",inline"`

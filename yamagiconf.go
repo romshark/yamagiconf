@@ -812,8 +812,13 @@ func getYAMLFieldName(t reflect.StructTag) string {
 
 func yamlTagIsInline(t reflect.StructTag) bool {
 	yamlTag := t.Get("yaml")
-	i := strings.IndexByte(yamlTag, ',')
-	return i != -1 && yamlTag[i+1:] == "inline"
+	opts := strings.Split(yamlTag, ",")
+	for _, opt := range opts {
+		if opt == "inline" {
+			return true
+		}
+	}
+	return false
 }
 
 func validateEnvField(f reflect.StructField) error {
