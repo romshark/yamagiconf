@@ -62,6 +62,8 @@ an error annotated with line and column in the YAML file if necessary.
 
 ## Example
 
+https://go.dev/play/p/PjV0aG7uIUH
+
 ```yaml
 list:
   - foo: valid
