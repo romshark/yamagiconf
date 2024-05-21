@@ -144,9 +144,9 @@ enabled: true`), 0o664)
 	require.Nil(t, c.SliceInt64Null)
 	require.Equal(t, [][]string{{"first", "second"}, {"third"}}, c.SliceSliceString)
 	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
-	require.Equal(t, `YAML unmarshaler non-pointer non-null`, c.UnmarshalerYAML.Str)
+	require.Equal(t, `YAML unmarshaler non-pointer non-null`, string(c.UnmarshalerYAML))
 	require.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
-	require.Equal(t, `YAML unmarshaler pointer`, c.PtrUnmarshalerYAML.Str)
+	require.Equal(t, `YAML unmarshaler pointer`, string(*c.PtrUnmarshalerYAML))
 	require.Equal(t, `Text unmarshaler pointer`, c.PtrUnmarshalerText.Str)
 	require.Nil(t, c.PtrUnmarshalerYAMLNull)
 	require.Nil(t, c.PtrUnmarshalerTextNull)
@@ -380,9 +380,9 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnYAMLUnmarshImpl)
 		require.Equal(t,
-			"at TestConfig.Wrong: env var on unsupported type: "+
+			"at TestConfig.Wrong: env var on yaml.Unmarshaler implementation: "+
 				"yamagiconf_test.YAMLUnmarshaler", err.Error())
 	})
 
@@ -391,9 +391,9 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong *YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnUnsupportedType)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvVarOnYAMLUnmarshImpl)
 		require.Equal(t,
-			"at TestConfig.Wrong: env var on unsupported type: "+
+			"at TestConfig.Wrong: env var on yaml.Unmarshaler implementation: "+
 				"*yamagiconf_test.YAMLUnmarshaler", err.Error())
 	})
 }
@@ -1967,7 +1967,7 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 type (
 	TextUnmarshaler        struct{ Str string }
 	TextUnmarshalerCopyRcv struct{ Str *string }
-	YAMLUnmarshaler        struct{ Str string }
+	YAMLUnmarshaler        string
 )
 
 func (u *TextUnmarshaler) UnmarshalText(d []byte) error {
@@ -1981,7 +1981,7 @@ func (u TextUnmarshalerCopyRcv) UnmarshalText(d []byte) error {
 }
 
 func (u *YAMLUnmarshaler) UnmarshalYAML(n *yaml.Node) error {
-	u.Str = n.Value
+	*u = YAMLUnmarshaler(n.Value)
 	return nil
 }
 

@@ -43,6 +43,7 @@ var (
 	ErrInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
 		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
 	ErrEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
+	ErrEnvVarOnYAMLUnmarshImpl = errors.New("env var on yaml.Unmarshaler implementation")
 	ErrMissingConfig           = errors.New("missing field in config file")
 	ErrInvalidEnvVar           = errors.New("invalid env var")
 	ErrValidation              = errors.New("validation")
@@ -74,6 +75,7 @@ var (
 //   - T contains any structs with yaml and/or env tags assigned to unexported fields.
 //   - T contains any struct implementing either yaml.Unmarshaler or
 //     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
+//   - T contains any fields with env tag on a type that implements yaml.Unmarshaler.
 //   - T contains any struct containing multiple fields with the same yaml tag.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
@@ -839,6 +841,11 @@ func validateEnvField(f reflect.StructField) error {
 	if n == "" || !regexEnvVarPOSIX.MatchString(n) {
 		return ErrInvalidEnvTag
 	}
+
+	if implementsInterface[yaml.Unmarshaler](f.Type) {
+		return fmt.Errorf("%w: %s", ErrEnvVarOnYAMLUnmarshImpl, f.Type.String())
+	}
+
 	switch k := f.Type.Kind(); {
 	case kindIsPrimitive(k):
 		return nil
