@@ -19,7 +19,7 @@ import (
 func LoadSrc[T any](src string) (*T, error) {
 	var c T
 	if err := yamagiconf.Load(src, &c); err != nil {
-		return nil, err
+		return &c, err
 	}
 	return &c, nil
 }
@@ -663,6 +663,8 @@ func TestValidateTypeErrIllegalRootType(t *testing.T) {
 		require.Equal(t, fmt.Sprintf(
 			"at string: %s", yamagiconf.ErrIllegalRootType.Error(),
 		), err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(string("ok")))
 	})
 
 	t.Run("implements_yaml_unmarshaler", func(t *testing.T) {
@@ -671,6 +673,9 @@ func TestValidateTypeErrIllegalRootType(t *testing.T) {
 		require.Equal(t, fmt.Sprintf(
 			"at YAMLUnmarshaler: %s", yamagiconf.ErrIllegalRootType.Error(),
 		), err.Error())
+
+		var i YAMLUnmarshaler
+		require.Equal(t, err, yamagiconf.Validate(i))
 	})
 
 	t.Run("implements_text_unmarshaler", func(t *testing.T) {
@@ -679,6 +684,9 @@ func TestValidateTypeErrIllegalRootType(t *testing.T) {
 		require.Equal(t, fmt.Sprintf(
 			"at TextUnmarshaler: %s", yamagiconf.ErrIllegalRootType.Error(),
 		), err.Error())
+
+		var i TextUnmarshaler
+		require.Equal(t, err, yamagiconf.Validate(i))
 	})
 }
 
@@ -693,6 +701,8 @@ func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
 	require.Equal(t,
 		"at TestConfig.unexported: yaml tag on unexported field",
 		err.Error())
+
+	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
@@ -708,6 +718,8 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("struct_with_tag", func(t *testing.T) {
@@ -722,6 +734,8 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("after_other_struct_tags", func(t *testing.T) {
@@ -736,6 +750,8 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("string", func(t *testing.T) {
@@ -747,6 +763,8 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Str: inline yaml on non-embedded field",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("string_with_tag", func(t *testing.T) {
@@ -758,6 +776,8 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Str: inline yaml on non-embedded field",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 }
 
@@ -774,6 +794,8 @@ func TestValidateTypeErrYAMLNoInlineOpt(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("named_inline", func(t *testing.T) {
@@ -788,6 +810,8 @@ func TestValidateTypeErrYAMLNoInlineOpt(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
 			err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 }
 
@@ -801,6 +825,8 @@ func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 	require.Equal(t, `at TestConfig.Second: yaml tag "x" `+
 		`previously defined on field TestConfig.First: `+
 		`a yaml tag must be unique`, err.Error())
+
+	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrEnvTagOnUnexported(t *testing.T) {
@@ -814,6 +840,8 @@ func TestValidateTypeErrEnvTagOnUnexported(t *testing.T) {
 	require.Equal(t,
 		"at TestConfig.unexported: env tag on unexported field",
 		err.Error())
+
+	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrNoExportedFields(t *testing.T) {
@@ -826,6 +854,8 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrNoExportedFields)
 	require.Equal(t, "at TestConfig: no exported fields", err.Error())
+
+	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
@@ -838,6 +868,8 @@ func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
 		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
 			`but field contains tag "yaml" ("illegal"): `+
 			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopYAMLUnmarshalerWithYAMLTag", func(t *testing.T) {
@@ -849,6 +881,8 @@ func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
 		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
 			`but field contains tag "yaml" ("illegal"): `+
 			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopTextUnmarshalerWithEnvTag", func(t *testing.T) {
@@ -860,6 +894,8 @@ func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
 		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
 			`but field contains tag "env" ("illegal"): `+
 			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopYAMLUnmarshalerWithEnvTag", func(t *testing.T) {
@@ -871,6 +907,8 @@ func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
 		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
 			`but field contains tag "env" ("illegal"): `+
 			yamagiconf.ErrTagOnInterfaceImpl.Error(), err.Error())
+
+		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 }
 
@@ -910,6 +948,8 @@ func TestAnonymousStructErrorPath(t *testing.T) {
 	require.Equal(t,
 		"at struct{...}.MissingYAMLTag: missing yaml struct tag",
 		err.Error())
+
+	require.Equal(t, err, yamagiconf.Validate(c))
 }
 
 func TestLoadErrMissingConfig(t *testing.T) {
@@ -1057,7 +1097,7 @@ func TestLoadErr(t *testing.T) {
 		c, err := LoadSrc[TestConfig]("x:\n\ttabs: 'TABS'\n  spaces: 'SPACES'\n")
 		require.ErrorIs(t, err, yamagiconf.ErrMalformedYAML)
 		require.True(t, strings.HasPrefix(err.Error(), "malformed YAML: yaml: line 2:"))
-		require.Zero(t, c)
+		require.NotZero(t, c)
 	})
 
 	t.Run("unsupported_boolean_literal", func(t *testing.T) {
@@ -1132,24 +1172,160 @@ func TestLoadErr(t *testing.T) {
 }
 
 func TestValidation(t *testing.T) {
+	type MapValVal map[ValidatedString]ValidatedString
+	type Container struct {
+		// Tag `validate:"required"` requires it to be non-zero.
+		Str            string             `yaml:"required-str" validate:"required"`
+		Slice          []ValidatedString  `yaml:"slice"`
+		SlicePtr       []*ValidatedString `yaml:"slice-ptr"`
+		ArrayMapValVal [1]MapValVal       `yaml:"array-map-val-val"`
+	}
 	type TestConfig struct {
-		Validation struct {
-			// Tag `validate:"required"` requires it to be non-zero.
-			RequiredStr string `yaml:"required-str" validate:"required"`
-		} `yaml:"validation"`
+		Container Container `yaml:"container"`
 	}
 
 	t.Run("required_ok", func(t *testing.T) {
-		_, err := LoadSrc[TestConfig]("validation:\n  required-str: 'ok'")
+		c, err := LoadSrc[TestConfig](`
+container:
+  required-str: ok
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - null
+`)
+		valid := ValidatedString("valid")
 		require.NoError(t, err)
+		require.Equal(t, TestConfig{Container: Container{
+			Str:      "ok",
+			Slice:    []ValidatedString{"valid", "valid"},
+			SlicePtr: []*ValidatedString{&valid, &valid},
+		}}, *c)
+		require.NoError(t, yamagiconf.Validate(*c))
 	})
 
-	t.Run("required_error", func(t *testing.T) {
-		_, err := LoadSrc[TestConfig]("validation:\n  required-str: ''")
+	t.Run("required_tag_error", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+container:
+  required-str: ''
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - null
+`)
 		require.ErrorIs(t, err, yamagiconf.ErrValidateTagViolation)
 		require.Equal(t,
-			`at 2:17: "required-str" violates validation rule: "required"`,
+			`at 3:17: "required-str" violates validation rule: "required"`,
 			err.Error())
+		validateErr := yamagiconf.Validate(
+			TestConfig{Container: Container{Str: ""}},
+		)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at 3:17: "required-str"`, "at TestConfig.Container.Str:"))
+	})
+
+	t.Run("validate_err_in_slice", func(t *testing.T) {
+		c, err := LoadSrc[TestConfig](`
+container:
+  required-str: ok
+  slice:
+    - valid
+    - invalid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - null
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t,
+			`at 6:7: at TestConfig.Container.Slice[1]: `+
+				`validation: is not 'valid'`,
+			err.Error())
+		validateErr := yamagiconf.Validate(*c)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at 6:7: at TestConfig.Container.Slice[1]:`,
+			`at TestConfig.Container.Slice[1]:`))
+	})
+
+	t.Run("validate_err_in_slice_ptr", func(t *testing.T) {
+		c, err := LoadSrc[TestConfig](`
+container:
+  required-str: ok
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - invalid
+  array-map-val-val:
+    - null
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t,
+			`at 9:7: at TestConfig.Container.SlicePtr[1]: `+
+				`validation: is not 'valid'`,
+			err.Error())
+		validateErr := yamagiconf.Validate(*c)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at 9:7: at TestConfig.Container.SlicePtr[1]:`,
+			`at TestConfig.Container.SlicePtr[1]:`))
+	})
+
+	t.Run("validate_err_in_map_key", func(t *testing.T) {
+		c, err := LoadSrc[TestConfig](`
+container:
+  required-str: ok
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - valid: valid
+      invalid: valid
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t,
+			`at 12:7: at TestConfig.Container.ArrayMapValVal[0]: `+
+				`validation: is not 'valid'`,
+			err.Error())
+		validateErr := yamagiconf.Validate(*c)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at 12:7: at TestConfig.Container.ArrayMapValVal[0]:`,
+			`at TestConfig.Container.ArrayMapValVal[0]:`))
+	})
+
+	t.Run("validate_err_in_map_val", func(t *testing.T) {
+		c, err := LoadSrc[TestConfig](`
+container:
+  required-str: ok
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - valid: invalid
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t,
+			`at 11:14: at TestConfig.Container.ArrayMapValVal[0][valid]: `+
+				`validation: is not 'valid'`,
+			err.Error())
+		validateErr := yamagiconf.Validate(*c)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at 11:14: at TestConfig.Container.ArrayMapValVal[0][valid]:`,
+			`at TestConfig.Container.ArrayMapValVal[0][valid]:`))
 	})
 }
 
@@ -1272,7 +1448,8 @@ container:
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrValidation)
 		errMsg := err.Error()
-		require.Equal(t, `at 2:1: validation: foo must not be empty`, errMsg)
+		require.Equal(t, "at 2:1: at TestConfWithValid: validation: "+
+			"foo must not be empty", errMsg)
 	})
 
 	t.Run("error_at_level_1", func(t *testing.T) {
@@ -1292,7 +1469,8 @@ container:
 
 		require.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, `at 5:21: validation: is not 'valid'`, errMsg)
+		require.Equal(t, "at 5:21: at TestConfWithValid.Container.ValidatedString: "+
+			"validation: is not 'valid'", errMsg)
 	})
 
 	t.Run("error_in_slice", func(t *testing.T) {
@@ -1313,7 +1491,8 @@ container:
 
 		require.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, `at 11:7: validation: is not 'valid'`, errMsg)
+		require.Equal(t, "at 11:7: at TestConfWithValid.Container.Slice[1]: "+
+			"validation: is not 'valid'", errMsg)
 	})
 
 	t.Run("error_in_map_key", func(t *testing.T) {
@@ -1335,7 +1514,8 @@ container:
 
 		require.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, `at 14:5: validation: is not 'valid'`, errMsg)
+		require.Equal(t, "at 14:5: at TestConfWithValid.Container.Map: "+
+			"validation: is not 'valid'", errMsg)
 	})
 
 	t.Run("error_in_map_value", func(t *testing.T) {
@@ -1355,7 +1535,8 @@ container:
 `)
 		require.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, `at 13:12: validation: is not 'valid'`, errMsg)
+		require.Equal(t, "at 13:12: at TestConfWithValid.Container.Map[valid]: "+
+			"validation: is not 'valid'", errMsg)
 	})
 }
 
@@ -2005,4 +2186,56 @@ func TestLoadTextUnmarshaler(t *testing.T) {
 	require.Equal(t, "t1", c.U1.Str)
 	require.Equal(t, "t2", *c.U2.Str)
 	require.Equal(t, "t3", c.U1Ptr.Str)
+}
+
+func CompareErrMsgWithPrefix(a, b error, aPrefix, bPrefix string) error {
+	if a == nil || b == nil {
+		return fmt.Errorf("both a (nil? %t) and b (nil? %t) must not be nil",
+			a == nil, b == nil)
+	}
+	aMsg, bMsg := a.Error(), b.Error()
+	if !strings.HasPrefix(aMsg, aPrefix) {
+		return fmt.Errorf("a (%v) doesn't have prefix %q", a, aPrefix)
+	}
+	if !strings.HasPrefix(bMsg, bPrefix) {
+		return fmt.Errorf("b (%v) doesn't have prefix %q", b, bPrefix)
+	}
+	aSuffix, bSuffix := aMsg[len(aPrefix):], bMsg[len(bPrefix):]
+	if aSuffix != bSuffix {
+		return fmt.Errorf("suffixes don't match (a: %q, b: %q)", aSuffix, bSuffix)
+	}
+	return nil
+}
+
+func TestCompareErrMsgWithPrefix(t *testing.T) {
+	a, b := errors.New("foo bar bazz"), errors.New("fazz bar bazz")
+	t.Run("ok", func(t *testing.T) {
+		require.NoError(t, CompareErrMsgWithPrefix(a, b, "foo", "fazz"))
+	})
+	t.Run("a_is_nil", func(t *testing.T) {
+		err := CompareErrMsgWithPrefix(nil, b, "foo", "fazz")
+		require.Error(t, err)
+		require.True(t, strings.HasPrefix(err.Error(), "both a "))
+	})
+	t.Run("b_is_nil", func(t *testing.T) {
+		err := CompareErrMsgWithPrefix(a, nil, "foo", "fazz")
+		require.Error(t, err)
+		require.True(t, strings.HasPrefix(err.Error(), "both a "))
+	})
+	t.Run("a_prefix_mismatch", func(t *testing.T) {
+		err := CompareErrMsgWithPrefix(a, b, "X", "fazz")
+		require.Error(t, err)
+		require.True(t, strings.HasPrefix(err.Error(), "a ("))
+	})
+	t.Run("b_prefix_mismatch", func(t *testing.T) {
+		err := CompareErrMsgWithPrefix(a, b, "foo", "X")
+		require.Error(t, err)
+		require.True(t, strings.HasPrefix(err.Error(), "b ("))
+	})
+	t.Run("suffix_mismatch", func(t *testing.T) {
+		a, b := errors.New("foo bar bazz"), errors.New("fazz bar baXX")
+		err := CompareErrMsgWithPrefix(a, b, "foo", "fazz")
+		require.Error(t, err)
+		require.True(t, strings.HasPrefix(err.Error(), "suffixes don't match"))
+	})
 }

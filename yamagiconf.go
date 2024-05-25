@@ -126,10 +126,7 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 	configType := reflect.TypeOf(config).Elem()
 
-	configTypeName := configType.Name()
-	if configTypeName == "" {
-		configTypeName = "struct{...}"
-	}
+	configTypeName := getConfigTypeName(configType)
 
 	err = validateYAMLValues(
 		make(map[string]*yaml.Node), "", configTypeName, configType, rootNode.Content[0],
@@ -143,7 +140,9 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		return err
 	}
 
-	err = invokeValidateRecursively(reflect.ValueOf(config), rootNode.Content[0])
+	err = invokeValidateRecursively(
+		configTypeName, reflect.ValueOf(config), rootNode.Content[0],
+	)
 	if err != nil {
 		return err
 	}
@@ -163,6 +162,28 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		return err
 	}
 	return nil
+}
+
+// Validate behaves similar to Load and LoadFile just without parsing YAML
+// and instead performing the same type and value checks on t.
+// Validate will obviously not report line:column error location.
+// Validate first validates type T, then validates t according to
+// go-playground/validator struct tags, then recursively
+// invokes all Validate methods returning an error if any.
+func Validate[T any](t T) error {
+	if err := ValidateType[T](); err != nil {
+		return err
+	}
+	err := validator.New(validator.WithRequiredStructEnabled()).Struct(t)
+	if err != nil {
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			return fmt.Errorf("at %s: %w: %q",
+				errs[0].StructNamespace(), ErrValidateTagViolation, errs[0].Tag())
+		}
+		return err
+	}
+	typeName := getConfigTypeName(reflect.TypeOf(t))
+	return invokeValidateRecursively(typeName, reflect.ValueOf(t), nil)
 }
 
 type Validator interface{ Validate() error }
@@ -205,16 +226,27 @@ func implementsInterface[I any](t reflect.Type) bool {
 	return false
 }
 
+func getConfigTypeName(t reflect.Type) string {
+	if n := t.Name(); n != "" {
+		return n
+	}
+	return "struct{...}"
+}
+
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
-// Assumes that T was previously checked with checkYAMLValues.
-func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
+// Assumes type of v was validated first using ValidateType.
+// If node != nil then assumes validateYAMLValues was ran first on it.
+func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) error {
 	tp := v.Type()
 
 	if v := asIface[Validator](v, false); v != nil {
 		if err := v.Validate(); err != nil {
-			return fmt.Errorf("at %d:%d: %w: %w",
-				node.Line, node.Column, ErrValidation, err)
+			if node == nil {
+				return fmt.Errorf("at %s: %w: %w", path, ErrValidation, err)
+			}
+			return fmt.Errorf("at %d:%d: at %s: %w: %w",
+				node.Line, node.Column, path, ErrValidation, err)
 		}
 	}
 	for tp.Kind() == reflect.Pointer {
@@ -237,30 +269,59 @@ func invokeValidateRecursively(v reflect.Value, node *yaml.Node) error {
 			}
 			fv := v.Field(i)
 			yamlTag := getYAMLFieldName(ft.Tag)
-			nodeValue := node
-			if !ft.Anonymous {
-				nodeValue = findContentNodeByTag(node, yamlTag)
+			var nodeValue *yaml.Node
+			if node != nil {
+				nodeValue = node
+				if !ft.Anonymous {
+					nodeValue = findContentNodeByTag(node, yamlTag)
+				}
 			}
-			if err := invokeValidateRecursively(fv, nodeValue); err != nil {
+			path := path + "." + ft.Name
+			if err := invokeValidateRecursively(path, fv, nodeValue); err != nil {
 				return err
 			}
 		}
 	case reflect.Slice, reflect.Array:
-		for i, nodeValue := range node.Content {
-			if err := invokeValidateRecursively(v.Index(i), nodeValue); err != nil {
+		for i := range v.Len() {
+			path := fmt.Sprintf("%s[%d]", path, i)
+			var nodeItem *yaml.Node
+			if node != nil {
+				nodeItem = node.Content[i]
+			}
+			err := invokeValidateRecursively(path, v.Index(i), nodeItem)
+			if err != nil {
 				return err
 			}
+
 		}
 	case reflect.Map:
-		mapKeys := v.MapKeys()
-		for i := 0; i < len(node.Content); i += 2 {
+		mapKeys := mapKeysSorted(v)
+		if node == nil {
 			for _, k := range mapKeys {
-				if k.String() == node.Content[i].Value {
-					err := invokeValidateRecursively(k, node.Content[i])
+				err := invokeValidateRecursively(path, k, nil)
+				if err != nil {
+					return err
+				}
+				path := fmt.Sprintf("%s[%v]", path, k)
+				err = invokeValidateRecursively(path, v.MapIndex(k), nil)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			for _, k := range mapKeys {
+				for i := 0; i < len(node.Content); i += 2 {
+					if k.String() != node.Content[i].Value {
+						continue
+					}
+					err := invokeValidateRecursively(path, k, node.Content[i])
 					if err != nil {
 						return err
 					}
-					err = invokeValidateRecursively(v.MapIndex(k), node.Content[i+1])
+					path := fmt.Sprintf("%s[%v]", path, k)
+					err = invokeValidateRecursively(
+						path, v.MapIndex(k), node.Content[i+1],
+					)
 					if err != nil {
 						return err
 					}
@@ -471,10 +532,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 			}
 		}
 	case reflect.Map:
-		keys := v.MapKeys()
-		sort.Slice(keys, func(i, j int) bool {
-			return fmt.Sprint(keys[i].Interface()) < fmt.Sprint(keys[j].Interface())
-		})
+		keys := mapKeysSorted(v)
 		for _, key := range keys {
 			path := fmt.Sprintf("%s[%s]", path, key.String())
 			value := v.MapIndex(key)
@@ -879,4 +937,12 @@ func kindIsPrimitive(k reflect.Kind) bool {
 		return true
 	}
 	return false
+}
+
+func mapKeysSorted(m reflect.Value) []reflect.Value {
+	keys := m.MapKeys()
+	sort.Slice(keys, func(i, j int) bool {
+		return fmt.Sprint(keys[i].Interface()) < fmt.Sprint(keys[j].Interface())
+	})
+	return keys
 }
