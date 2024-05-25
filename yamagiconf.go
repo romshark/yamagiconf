@@ -35,6 +35,7 @@ var (
 	ErrYAMLTagRedefined    = errors.New("a yaml tag must be unique")
 	ErrYAMLAnchorRedefined = errors.New("yaml anchors must be unique throughout " +
 		"the whole document")
+	ErrYAMLAnchorUnused   = errors.New("yaml anchors must be referenced at least once")
 	ErrEnvTagOnUnexported = errors.New("env tag on unexported field")
 	ErrTagOnInterfaceImpl = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
@@ -86,6 +87,7 @@ var (
 //   - the yaml file assigns `null` to a non-pointer Go type.
 //   - the yaml file contains any YAML tags (https://yaml.org/spec/1.2.2/#3212-tags).
 //   - the yaml file contains any redeclared anchors.
+//   - the yaml file contains any unused anchors.
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrNilConfig
@@ -128,11 +130,20 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 	configTypeName := getConfigTypeName(configType)
 
+	anchors := make(map[string]*anchor)
 	err = validateYAMLValues(
-		make(map[string]*yaml.Node), "", configTypeName, configType, rootNode.Content[0],
+		anchors, "", configTypeName, configType, rootNode.Content[0],
 	)
 	if err != nil {
 		return err
+	}
+
+	// Check for unused anchors
+	for _, anchor := range anchors {
+		if !anchor.IsUsed {
+			return fmt.Errorf("at %d:%d: anchor %q: %w",
+				anchor.Line, anchor.Column, anchor.Anchor, ErrYAMLAnchorUnused)
+		}
 	}
 
 	err = unmarshalEnv(configTypeName, "", reflect.ValueOf(config).Elem())
@@ -611,10 +622,16 @@ func leftmostPathElement(s string) (element, rest string) {
 	return s, ""
 }
 
+type anchor struct {
+	*yaml.Node
+	Defined bool
+	IsUsed  bool
+}
+
 // validateYAMLValues returns an error if the yaml model contains illegal values
 // or is missing values specified by T. Assumes that tp has already been validated.
 func validateYAMLValues(
-	anchors map[string]*yaml.Node, yamlTag, path string, tp reflect.Type, node *yaml.Node,
+	anchors map[string]*anchor, yamlTag, path string, tp reflect.Type, node *yaml.Node,
 ) error {
 	if err := validateValue(tp, node); err != nil {
 		if yamlTag != "" {
@@ -626,14 +643,17 @@ func validateYAMLValues(
 	}
 
 	if node.Anchor != "" {
-		if previous, ok := anchors[node.Anchor]; ok {
+		if p, ok := anchors[node.Anchor]; ok && p.Defined {
 			return fmt.Errorf("at %d:%d: redefined anchor %q at %d:%d: %w",
 				node.Line, node.Column,
 				node.Anchor,
-				previous.Line, previous.Column,
+				p.Line, p.Column,
 				ErrYAMLAnchorRedefined)
 		}
-		anchors[node.Anchor] = node
+		anchors[node.Anchor] = &anchor{Node: node, Defined: true}
+	}
+	if node.Alias != nil {
+		anchors[node.Alias.Anchor].IsUsed = true
 	}
 
 	switch tp.Kind() {

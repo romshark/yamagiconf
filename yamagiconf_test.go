@@ -200,8 +200,8 @@ func TestLoadErrInvalidUTF8(t *testing.T) {
 
 func TestLoadErrYAMLAnchorRedefined(t *testing.T) {
 	type Container struct {
-		One string `yaml:"one"`
-		Two string `yaml:"two"`
+		Three string `yaml:"three"`
+		Four  string `yaml:"four"`
 	}
 	type TestConfig struct {
 		One       string    `yaml:"one"`
@@ -213,8 +213,8 @@ func TestLoadErrYAMLAnchorRedefined(t *testing.T) {
 one: &x v1
 two: &x
 container:
-  one: *x
-  two: *x
+  three: *x
+  four: *x
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
 		require.Equal(t, `at 3:6: redefined anchor "x" at 2:6: `+
@@ -226,12 +226,49 @@ container:
 one: &x v1
 two: *x
 container:
-  one: &x
-  two: *x
+  three: &x
+  four: *x
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
-		require.Equal(t, `at 5:8: redefined anchor "x" at 2:6: `+
+		require.Equal(t, `at 5:10: redefined anchor "x" at 2:6: `+
 			`yaml anchors must be unique throughout the whole document`, err.Error())
+	})
+}
+
+func TestLoadErrYAMLAnchorUnused(t *testing.T) {
+	type Container struct {
+		Three string `yaml:"three"`
+		Four  string `yaml:"four"`
+	}
+	type TestConfig struct {
+		One       string    `yaml:"one"`
+		Two       string    `yaml:"two"`
+		Container Container `yaml:"container"`
+	}
+	t.Run("level_0", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+one: &a ok
+two: &b ok
+container:
+  three: *a
+  four: *a
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorUnused)
+		require.Equal(t, `at 3:6: anchor "b": `+
+			`yaml anchors must be referenced at least once`, err.Error())
+	})
+
+	t.Run("level_1", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+one: ok
+two: ok
+container:
+  three: &x
+  four: not ok
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorUnused)
+		require.Equal(t, `at 5:10: anchor "x": `+
+			`yaml anchors must be referenced at least once`, err.Error())
 	})
 }
 
