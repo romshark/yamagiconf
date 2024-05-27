@@ -152,6 +152,146 @@ enabled: true`), 0o664)
 	require.Nil(t, c.PtrUnmarshalerTextNull)
 }
 
+func TestAnchors(t *testing.T) {
+	type TestConfig struct {
+		Bool      bool `yaml:"bool"`
+		BoolAlias bool `yaml:"alias-bool"`
+
+		PtrBool      *bool `yaml:"ptr-bool"`
+		PtrBoolAlias *bool `yaml:"alias-ptr-bool"`
+
+		PtrBoolNull      *bool `yaml:"ptr-bool-null"`
+		PtrBoolNullAlias *bool `yaml:"alias-ptr-bool-null"`
+
+		Str      string `yaml:"str"`
+		StrAlias string `yaml:"alias-str"`
+
+		Float32      float32 `yaml:"float32"`
+		Float32Alias float32 `yaml:"alias-float32"`
+
+		Float64      float64 `yaml:"float64"`
+		Float64Alias float64 `yaml:"alias-float64"`
+
+		Int8      int8 `yaml:"int8"`
+		Int8Alias int8 `yaml:"alias-int8"`
+
+		Int16      int16 `yaml:"int16"`
+		Int16Alias int16 `yaml:"alias-int16"`
+
+		Int32      int32 `yaml:"int32"`
+		Int32Alias int32 `yaml:"alias-int32"`
+
+		Int64      int64 `yaml:"int64"`
+		Int64Alias int64 `yaml:"alias-int64"`
+
+		Uint8      uint8 `yaml:"uint8"`
+		Uint8Alias uint8 `yaml:"alias-uint8"`
+
+		Uint16      uint16 `yaml:"uint16"`
+		Uint16Alias uint16 `yaml:"alias-uint16"`
+
+		Uint32      uint32 `yaml:"uint32"`
+		Uint32Alias uint32 `yaml:"alias-uint32"`
+
+		Uint64      uint64 `yaml:"uint64"`
+		Uint64Alias uint64 `yaml:"alias-uint64"`
+
+		SliceStr      []string `yaml:"slice-str"`
+		SliceStrAlias []string `yaml:"alias-slice-str"`
+
+		SliceStrNull      []string `yaml:"slice-str-null"`
+		SliceStrNullAlias []string `yaml:"alias-slice-str-null"`
+
+		SliceInt64      []int64 `yaml:"slice-int64"`
+		SliceInt64Alias []int64 `yaml:"alias-slice-int64"`
+
+		SliceSliceStr      [][]string `yaml:"slice-slice-str"`
+		SliceSliceStrAlias [][]string `yaml:"alias-slice-slice-str"`
+
+		MapStrStr      map[string]string `yaml:"map-str-str"`
+		MapStrStrAlias map[string]string `yaml:"alias-map-str-str"`
+
+		MapStrStrNull      map[string]string `yaml:"map-str-str-null"`
+		MapStrStrNullAlias map[string]string `yaml:"alias-map-str-str-null"`
+
+		MapComplex      map[string]map[string][2][]string `yaml:"map-complex"`
+		MapComplexAlias map[string]map[string][2][]string `yaml:"alias-map-complex"`
+	}
+	var c TestConfig
+	err := yamagiconf.Load(`# test YAML file
+ptr-bool: &ptr-bool true
+ptr-bool-null: &ptr-bool-null null
+bool: &bool true
+str: &str example text
+float32: &float32 3.14
+float64: &float64 628.28
+int8: &int8 123
+int16: &int16 1234
+int32: &int32 12345
+int64: &int64 123456
+uint8: &uint8 123
+uint16: &uint16 1234
+uint32: &uint32 12345
+uint64: &uint64 123456
+slice-str: &slice-str [foo, bar]
+slice-str-null: &slice-str-null null
+slice-int64: &slice-int64 [0, 1, 2]
+slice-slice-str: &slice-slice-str [[foo], [], [bar, bazz]]
+map-str-str: &map-str-str
+  foo: bar
+map-str-str-null: &map-str-str-null null
+map-complex: &map-complex
+  first_level:
+    second_level:
+      - - one
+        - two
+      - - three
+        - four
+alias-ptr-bool: *ptr-bool
+alias-ptr-bool-null: *ptr-bool-null
+alias-bool: *bool
+alias-str: *str
+alias-float32: *float32
+alias-float64: *float64
+alias-int8: *int8
+alias-int16: *int16
+alias-int32: *int32
+alias-int64: *int64
+alias-uint8: *uint8
+alias-uint16: *uint16
+alias-uint32: *uint32
+alias-uint64: *uint64
+alias-slice-str: *slice-str
+alias-slice-str-null: *slice-str-null
+alias-slice-int64: *slice-int64
+alias-slice-slice-str: *slice-slice-str
+alias-map-str-str: *map-str-str
+alias-map-str-str-null: *map-str-str-null
+alias-map-complex: *map-complex
+`, &c)
+	require.NoError(t, err)
+
+	require.Equal(t, c.Bool, c.BoolAlias)
+	require.Equal(t, c.PtrBool, c.PtrBoolAlias)
+	require.Equal(t, c.PtrBoolNull, c.PtrBoolNullAlias)
+	require.Equal(t, c.Str, c.StrAlias)
+	require.Equal(t, c.Float32, c.Float32Alias)
+	require.Equal(t, c.Float64, c.Float64Alias)
+	require.Equal(t, c.Int8, c.Int8Alias)
+	require.Equal(t, c.Int16, c.Int16Alias)
+	require.Equal(t, c.Int32, c.Int32Alias)
+	require.Equal(t, c.Int64, c.Int64Alias)
+	require.Equal(t, c.Uint8, c.Uint8Alias)
+	require.Equal(t, c.Uint16, c.Uint16Alias)
+	require.Equal(t, c.Uint32, c.Uint32Alias)
+	require.Equal(t, c.Uint64, c.Uint64Alias)
+	require.Equal(t, c.SliceStr, c.SliceStrAlias)
+	require.Equal(t, c.SliceInt64, c.SliceInt64Alias)
+	require.Equal(t, c.SliceSliceStr, c.SliceSliceStrAlias)
+	require.Equal(t, c.MapStrStr, c.MapStrStrAlias)
+	require.Equal(t, c.MapComplex, c.MapComplexAlias)
+}
+
 func TestLoadErrInvalidUTF8(t *testing.T) {
 	type TestConfig struct {
 		Str string `yaml:"str"`

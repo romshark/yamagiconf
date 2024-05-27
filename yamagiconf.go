@@ -267,6 +267,10 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 		tp, v = tp.Elem(), v.Elem()
 	}
 
+	if node != nil && node.Alias != nil {
+		node = node.Alias
+	}
+
 	switch tp.Kind() {
 	case reflect.Struct:
 		if implementsInterface[encoding.TextUnmarshaler](tp) ||
