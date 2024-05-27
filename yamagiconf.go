@@ -732,7 +732,7 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 			return ErrNullOnNonPointer
 		}
 	}
-	if kind == reflect.Bool {
+	if kind == reflect.Bool && node.Alias == nil {
 		if v := node.Value; v != "true" && v != "false" {
 			return ErrBadBoolLiteral
 		}
