@@ -48,6 +48,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids the use of [YAML tags](https://yaml.org/spec/1.2.2/#3212-tags).
 	- 🚫 Forbids redeclaration of anchors.
 	- 🚫 Forbids unused anchors.
+	- 🚫 Forbids anchors with implicit `null` value (no value) like `foo: &bar`.
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
 
 - Features:

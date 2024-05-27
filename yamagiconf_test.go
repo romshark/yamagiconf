@@ -403,12 +403,105 @@ container:
 one: ok
 two: ok
 container:
-  three: &x
+  three: &x ""
   four: not ok
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorUnused)
 		require.Equal(t, `at 5:10: anchor "x": `+
 			`yaml anchors must be referenced at least once`, err.Error())
+	})
+}
+
+func TestLoadErrYAMLAnchorNoValue(t *testing.T) {
+	t.Run("ok_noerror", func(t *testing.T) {
+		type Values struct {
+			StrDoubleQuote string            `yaml:"str-double-quote"`
+			StrSingleQuote string            `yaml:"str-single-quote"`
+			PtrStr         *string           `yaml:"ptr-str"`
+			Int64          int64             `yaml:"int64"`
+			SliceStr       []string          `yaml:"slice-str"`
+			ArraySliceStr  [2][]string       `yaml:"array-slice-str"`
+			MapStrStr      map[string]string `yaml:"map-str-str"`
+		}
+		type TestConfig struct {
+			Values  `yaml:",inline"`
+			Aliases Values `yaml:"aliases"`
+		}
+
+		_, err := LoadSrc[TestConfig](`
+str-double-quote: &str-double-quote ok
+str-single-quote: &str-single-quote ok
+ptr-str: &ptr-str ok
+int64: &int64 42
+slice-str: &slice-str [foo,bar]
+array-slice-str: &array-slice-str [[foo,bar],[]]
+map-str-str: &map-str-str
+  foo: bar
+aliases:
+  str-double-quote: *str-double-quote
+  str-single-quote: *str-single-quote
+  ptr-str: *ptr-str
+  int64: *int64
+  slice-str: *slice-str
+  array-slice-str: *array-slice-str
+  map-str-str: *map-str-str
+`)
+		require.NoError(t, err)
+	})
+
+	src := `
+anchor: &anchor
+alias: *anchor
+`
+	checkErr := func(t *testing.T, err error) {
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorNoValue)
+		require.Equal(t, `at 2:9: anchor "anchor": `+
+			`don't use anchors with implicit null value`, err.Error())
+	}
+
+	t.Run("err_string", func(t *testing.T) {
+		type TestConfig struct {
+			Anchor string `yaml:"anchor"`
+			Alias  string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](src)
+		checkErr(t, err)
+	})
+
+	t.Run("err_pointer", func(t *testing.T) {
+		type TestConfig struct {
+			Anchor *string `yaml:"anchor"`
+			Alias  *string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](src)
+		checkErr(t, err)
+	})
+
+	t.Run("err_slice", func(t *testing.T) {
+		type TestConfig struct {
+			Anchor []string `yaml:"anchor"`
+			Alias  []string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](src)
+		checkErr(t, err)
+	})
+
+	t.Run("err_array", func(t *testing.T) {
+		type TestConfig struct {
+			Anchor [1]string `yaml:"anchor"`
+			Alias  [1]string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](src)
+		checkErr(t, err)
+	})
+
+	t.Run("err_map", func(t *testing.T) {
+		type TestConfig struct {
+			Anchor map[string]string `yaml:"anchor"`
+			Alias  map[string]string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](src)
+		checkErr(t, err)
 	})
 }
 

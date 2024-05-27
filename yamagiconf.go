@@ -36,6 +36,7 @@ var (
 	ErrYAMLAnchorRedefined = errors.New("yaml anchors must be unique throughout " +
 		"the whole document")
 	ErrYAMLAnchorUnused   = errors.New("yaml anchors must be referenced at least once")
+	ErrYAMLAnchorNoValue  = errors.New("don't use anchors with implicit null value")
 	ErrEnvTagOnUnexported = errors.New("env tag on unexported field")
 	ErrTagOnInterfaceImpl = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
@@ -88,6 +89,7 @@ var (
 //   - the yaml file contains any YAML tags (https://yaml.org/spec/1.2.2/#3212-tags).
 //   - the yaml file contains any redeclared anchors.
 //   - the yaml file contains any unused anchors.
+//   - the yaml file contains any anchors with implicit null value (no value).
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrNilConfig
@@ -653,6 +655,11 @@ func validateYAMLValues(
 				node.Anchor,
 				p.Line, p.Column,
 				ErrYAMLAnchorRedefined)
+		}
+		if node.Value == "" && node.Style != yaml.DoubleQuotedStyle &&
+			node.Style != yaml.SingleQuotedStyle && len(node.Content) < 1 {
+			return fmt.Errorf("at %d:%d: anchor %q: %w",
+				node.Line, node.Column, node.Anchor, ErrYAMLAnchorNoValue)
 		}
 		anchors[node.Anchor] = &anchor{Node: node, Defined: true}
 	}
