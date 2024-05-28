@@ -23,12 +23,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Errors, including type-specific errors.
+// All possible errors.
 var (
-	ErrNilConfig           = errors.New("cannot load into nil config")
-	ErrEmptyFile           = errors.New("empty file")
-	ErrMalformedYAML       = errors.New("malformed YAML")
-	ErrMissingYAMLTag      = errors.New("missing yaml struct tag")
+	ErrConfigNil            = errors.New("cannot load into nil config")
+	ErrValidation           = errors.New("validation")
+	ErrValidateTagViolation = errors.New("violates validation rule")
+
+	ErrYAMLEmptyFile       = errors.New("empty file")
+	ErrYAMLMalformed       = errors.New("malformed YAML")
 	ErrYAMLInlineNonAnon   = errors.New("inline yaml on non-embedded field")
 	ErrYAMLInlineOpt       = errors.New("use `yaml:\",inline\"` for embedded fields")
 	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
@@ -37,48 +39,36 @@ var (
 		"the whole document")
 	ErrYAMLAnchorUnused   = errors.New("yaml anchors must be referenced at least once")
 	ErrYAMLAnchorNoValue  = errors.New("don't use anchors with implicit null value")
-	ErrEnvTagOnUnexported = errors.New("env tag on unexported field")
-	ErrTagOnInterfaceImpl = errors.New("implementations of interfaces " +
+	ErrYAMLMissingConfig  = errors.New("missing field in config file")
+	ErrYAMLBadBoolLiteral = errors.New("must be either false or true, " +
+		"other variants of boolean literals of YAML are not supported")
+	ErrYAMLTagUsed          = errors.New("avoid using YAML tags")
+	ErrYAMLNullOnNonPointer = errors.New("cannot assign null to non-pointer type")
+	ErrYAMLBadNullLiteral   = errors.New("must be null, " +
+		"any other variants of null are not supported")
+
+	ErrTypeRecursive   = errors.New("recursive type")
+	ErrTypeIllegalRoot = errors.New("root type must be a struct type and must not " +
+		"implement encoding.TextUnmarshaler and yaml.Unmarshaler")
+	ErrTypeMissingYAMLTag     = errors.New("missing yaml struct tag")
+	ErrTypeEnvTagOnUnexported = errors.New("env tag on unexported field")
+	ErrTypeTagOnInterfaceImpl = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
 		"contain yaml and env tags")
-	ErrNoExportedFields = errors.New("no exported fields")
-	ErrInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
+	ErrTypeEnvOnYAMLUnmarsh = errors.New("env var on yaml.Unmarshaler implementation")
+	ErrTypeNoExportedFields = errors.New("no exported fields")
+	ErrTypeInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
 		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
-	ErrEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
-	ErrEnvVarOnYAMLUnmarshImpl = errors.New("env var on yaml.Unmarshaler implementation")
-	ErrMissingConfig           = errors.New("missing field in config file")
-	ErrInvalidEnvVar           = errors.New("invalid env var")
-	ErrValidation              = errors.New("validation")
-	ErrValidateTagViolation    = errors.New("violates validation rule")
-	ErrBadBoolLiteral          = errors.New("must be either false or true, " +
-		"other variants of boolean literals of YAML are not supported")
-	ErrBadNullLiteral = errors.New("must be null, " +
-		"any other variants of null are not supported")
-	ErrNullOnNonPointer = errors.New("cannot assign null to non-pointer type")
-	ErrYAMLTagUsed      = errors.New("avoid using YAML tags")
-	ErrRecursiveType    = errors.New("recursive type")
-	ErrIllegalRootType  = errors.New("root type must be a struct type and must not " +
-		"implement encoding.TextUnmarshaler and yaml.Unmarshaler")
-	ErrUnsupportedType    = errors.New("unsupported type")
-	ErrUnsupportedPtrType = errors.New("unsupported pointer type")
+	ErrTypeEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
+	ErrTypeUnsupported             = errors.New("unsupported type")
+	ErrTypeUnsupportedPtrType      = errors.New("unsupported pointer type")
+
+	ErrEnvInvalidVar = errors.New("invalid env var")
 )
 
 // LoadFile reads and validates the configuration of type T from a YAML file.
 // Will return an error if:
-//
-//   - T contains any struct field without a "yaml" struct tag.
-//   - T contains any struct field with an invalid "env" struct tag.
-//   - T is recursive.
-//   - T contains any unsupported types (signed and unsigned integers with unspecified
-//     width, interface (including `any`), function, channel,
-//     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map).
-//   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
-//   - T contains any structs with no exported fields.
-//   - T contains any structs with yaml and/or env tags assigned to unexported fields.
-//   - T contains any struct implementing either yaml.Unmarshaler or
-//     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
-//   - T contains any fields with env tag on a type that implements yaml.Unmarshaler.
-//   - T contains any struct containing multiple fields with the same yaml tag.
+//   - ValidateType returns an error for T.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
 //   - the yaml file is missing a field specified by T.
@@ -92,7 +82,7 @@ var (
 //   - the yaml file contains any anchors with implicit null value (no value).
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
-		return ErrNilConfig
+		return ErrConfigNil
 	}
 
 	yamlSrcBytes, err := os.ReadFile(yamlFilePath)
@@ -106,10 +96,10 @@ func LoadFile[T any](yamlFilePath string, config *T) error {
 // Load behaves similar to LoadFile.
 func Load[T any, S string | []byte](yamlSource S, config *T) error {
 	if config == nil {
-		return ErrNilConfig
+		return ErrConfigNil
 	}
 	if len(yamlSource) == 0 {
-		return ErrEmptyFile
+		return ErrYAMLEmptyFile
 	}
 
 	if err := ValidateType[T](); err != nil {
@@ -120,7 +110,7 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 	dec.KnownFields(true)
 	err := dec.Decode(config)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrMalformedYAML, err)
+		return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
 	}
 
 	var rootNode yaml.Node
@@ -581,10 +571,10 @@ var typeTimeDuration = reflect.TypeOf(time.Duration(0))
 func errUnmarshalEnv(path, envVar string, tp reflect.Type, err error) error {
 	if err != nil {
 		return fmt.Errorf("at %s: %w %s: expected %s: %w",
-			path, ErrInvalidEnvVar, envVar, tp.String(), err)
+			path, ErrEnvInvalidVar, envVar, tp.String(), err)
 	}
 	return fmt.Errorf("at %s: %w %s: expected %s",
-		path, ErrInvalidEnvVar, envVar, tp.String())
+		path, ErrEnvInvalidVar, envVar, tp.String())
 }
 
 // mustFindLocationByValidatorNamespace finds the line and column numbers of the
@@ -686,7 +676,7 @@ func validateYAMLValues(
 			}
 			if contentNode == nil {
 				return fmt.Errorf("at %s (as %q): %w",
-					path, yamlTag, ErrMissingConfig)
+					path, yamlTag, ErrYAMLMissingConfig)
 			}
 			err := validateYAMLValues(anchors, yamlTag, path, f.Type, contentNode)
 			if err != nil {
@@ -730,29 +720,41 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 		case yaml.DoubleQuotedStyle, yaml.SingleQuotedStyle:
 			return nil
 		default:
-			return ErrNullOnNonPointer
+			return ErrYAMLNullOnNonPointer
 		}
 	}
 	if v := node.Value; v == "~" || strings.EqualFold(v, "null") {
 		if v != "null" {
-			return ErrBadNullLiteral
+			return ErrYAMLBadNullLiteral
 		}
 		switch kind {
 		case reflect.Pointer, reflect.Slice, reflect.Map:
 		default:
-			return ErrNullOnNonPointer
+			return ErrYAMLNullOnNonPointer
 		}
 	}
 	if kind == reflect.Bool && node.Alias == nil {
 		if v := node.Value; v != "true" && v != "false" {
-			return ErrBadBoolLiteral
+			return ErrYAMLBadBoolLiteral
 		}
 	}
 	return nil
 }
 
-// ValidateType returns an error if any violation of rules defined by
-// LoadFile is determined, otherwise returns nil.
+// ValidateType returns an error if...
+//   - T contains any struct field without a "yaml" struct tag.
+//   - T contains any struct field with an invalid "env" struct tag.
+//   - T is recursive.
+//   - T contains any unsupported types (signed and unsigned integers with unspecified
+//     width, interface (including `any`), function, channel,
+//     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map).
+//   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
+//   - T contains any structs with no exported fields.
+//   - T contains any structs with yaml and/or env tags assigned to unexported fields.
+//   - T contains any struct implementing either yaml.Unmarshaler or
+//     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
+//   - T contains any fields with env tag on a type that implements yaml.Unmarshaler.
+//   - T contains any struct containing multiple fields with the same yaml tag.
 func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
@@ -768,7 +770,7 @@ func ValidateType[T any]() error {
 				if p == tp {
 					// Recursive type
 					return fmt.Errorf("at %s: %w",
-						path, ErrRecursiveType)
+						path, ErrTypeRecursive)
 				}
 			}
 			stack = append(stack, tp) // Push stack
@@ -788,7 +790,7 @@ func ValidateType[T any]() error {
 					return fmt.Errorf("at %s: %w", path, ErrYAMLInlineNonAnon)
 				}
 				if yamlTag == "" && isExported && !f.Anonymous {
-					return fmt.Errorf("at %s: %w", path, ErrMissingYAMLTag)
+					return fmt.Errorf("at %s: %w", path, ErrTypeMissingYAMLTag)
 				} else if yamlTag != "" && !isExported {
 					return fmt.Errorf("at %s: %w", path, ErrYAMLTagOnUnexported)
 				}
@@ -815,7 +817,7 @@ func ValidateType[T any]() error {
 				}
 			}
 			if exportedFields < 1 {
-				return fmt.Errorf("at %s: %w", path, ErrNoExportedFields)
+				return fmt.Errorf("at %s: %w", path, ErrTypeNoExportedFields)
 			}
 			stack = stack[:len(stack)-1] // Pop stack
 			return nil
@@ -823,22 +825,22 @@ func ValidateType[T any]() error {
 			reflect.Func,
 			reflect.Interface,
 			reflect.UnsafePointer:
-			return fmt.Errorf("at %s: %w: %s", path, ErrUnsupportedType, tp.String())
+			return fmt.Errorf("at %s: %w: %s", path, ErrTypeUnsupported, tp.String())
 		case reflect.Pointer:
 			tp = tp.Elem()
 			switch tp.Kind() {
 			case reflect.Pointer, reflect.Slice, reflect.Map:
-				return fmt.Errorf("at %s: %w", path, ErrUnsupportedPtrType)
+				return fmt.Errorf("at %s: %w", path, ErrTypeUnsupportedPtrType)
 			}
 			return traverse(path, tp)
 		case reflect.Int:
 			return fmt.Errorf("at %s: %w: %s, %s",
-				path, ErrUnsupportedType, tp.String(),
+				path, ErrTypeUnsupported, tp.String(),
 				"use integer type with specified width, "+
 					"such as int8, int16, int32 or int64 instead of int")
 		case reflect.Uint:
 			return fmt.Errorf("at %s: %w: %s, %s",
-				path, ErrUnsupportedType, tp.String(),
+				path, ErrTypeUnsupported, tp.String(),
 				"use unsigned integer type with specified width, "+
 					"such as uint8, uint16, uint32 or uint64 instead of uint")
 		case reflect.Slice, reflect.Array:
@@ -862,7 +864,7 @@ func ValidateType[T any]() error {
 	if tp.Kind() != reflect.Struct ||
 		implementsInterface[encoding.TextUnmarshaler](tp) ||
 		implementsInterface[yaml.Unmarshaler](tp) {
-		return fmt.Errorf("at %s: %w", n, ErrIllegalRootType)
+		return fmt.Errorf("at %s: %w", n, ErrTypeIllegalRoot)
 	}
 	return traverse(n, tp)
 }
@@ -878,11 +880,11 @@ func validateTypeImplementingIfaces(path string, implementer reflect.Type) error
 		f := implementer.Field(i)
 		if tag := getYAMLFieldName(f.Tag); tag != "" {
 			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
-				"\"yaml\" (%q): %w", path, implementedIface, tag, ErrTagOnInterfaceImpl)
+				"\"yaml\" (%q): %w", path, implementedIface, tag, ErrTypeTagOnInterfaceImpl)
 		}
 		if tag := f.Tag.Get("env"); tag != "" {
 			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
-				"\"env\" (%q): %w", path, implementedIface, tag, ErrTagOnInterfaceImpl)
+				"\"env\" (%q): %w", path, implementedIface, tag, ErrTypeTagOnInterfaceImpl)
 		}
 	}
 	return nil
@@ -924,15 +926,15 @@ func validateEnvField(f reflect.StructField) error {
 	}
 
 	if !f.IsExported() {
-		return ErrEnvTagOnUnexported
+		return ErrTypeEnvTagOnUnexported
 	}
 
 	if n == "" || !regexEnvVarPOSIX.MatchString(n) {
-		return ErrInvalidEnvTag
+		return ErrTypeInvalidEnvTag
 	}
 
 	if implementsInterface[yaml.Unmarshaler](f.Type) {
-		return fmt.Errorf("%w: %s", ErrEnvVarOnYAMLUnmarshImpl, f.Type.String())
+		return fmt.Errorf("%w: %s", ErrTypeEnvOnYAMLUnmarsh, f.Type.String())
 	}
 
 	switch k := f.Type.Kind(); {
@@ -944,7 +946,7 @@ func validateEnvField(f reflect.StructField) error {
 	case implementsInterface[encoding.TextUnmarshaler](f.Type):
 		return nil
 	}
-	return fmt.Errorf("%w: %s", ErrEnvVarOnUnsupportedType, f.Type.String())
+	return fmt.Errorf("%w: %s", ErrTypeEnvVarOnUnsupportedType, f.Type.String())
 }
 
 const regexEnvVarPOSIXPattern = `^[A-Z_][A-Z0-9_]*$`
