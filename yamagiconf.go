@@ -216,6 +216,12 @@ func asIface[I any](v reflect.Value, allocateIfNecessary bool) (i I) {
 			return vp.Interface().(I)
 		}
 	}
+	if pt := reflect.PointerTo(v.Type()); pt.Implements(ti) {
+		// Pointer to v implements the interface
+		ptr := reflect.New(v.Type())
+		ptr.Elem().Set(v)
+		return ptr.Interface().(I)
+	}
 	return i
 }
 

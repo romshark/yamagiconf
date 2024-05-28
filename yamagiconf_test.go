@@ -2509,3 +2509,17 @@ func TestCompareErrMsgWithPrefix(t *testing.T) {
 		require.True(t, strings.HasPrefix(err.Error(), "suffixes don't match"))
 	})
 }
+
+type ValidateWithPointerReceiver struct {
+	err           error
+	ExportedField bool `yaml:"exported-field"`
+}
+
+func (p *ValidateWithPointerReceiver) Validate() error { return p.err }
+
+func TestValidatorPointerReceiver(t *testing.T) {
+	ErrValidateWithPointerReceiver := errors.New("this is fine")
+	v := ValidateWithPointerReceiver{err: ErrValidateWithPointerReceiver}
+	err := yamagiconf.Validate(v)
+	require.ErrorIs(t, err, v.err)
+}
