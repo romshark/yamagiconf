@@ -2523,3 +2523,51 @@ func TestValidatorPointerReceiver(t *testing.T) {
 	err := yamagiconf.Validate(v)
 	require.ErrorIs(t, err, v.err)
 }
+
+type (
+	IntImplsUnmarshalers       int
+	IntImplsYAMLUnmarshaler    int
+	AnySlcImplsTextUnmarshaler []**any
+	AnySlcImplsYAMLUnmarshaler []**any
+)
+
+func (u *IntImplsUnmarshalers) UnmarshalText(t []byte) error          { return nil }
+func (u AnySlcImplsTextUnmarshaler) UnmarshalText(t []byte) error     { return nil }
+func (u *IntImplsYAMLUnmarshaler) UnmarshalYAML(n *yaml.Node) error   { return nil }
+func (u AnySlcImplsYAMLUnmarshaler) UnmarshalYAML(n *yaml.Node) error { return nil }
+
+var (
+	_ encoding.TextUnmarshaler = new(IntImplsUnmarshalers)
+	_ yaml.Unmarshaler         = new(IntImplsYAMLUnmarshaler)
+	_ encoding.TextUnmarshaler = new(AnySlcImplsTextUnmarshaler)
+	_ yaml.Unmarshaler         = new(AnySlcImplsYAMLUnmarshaler)
+)
+
+// TestForbiddenTypeImplementsUnmarshaler tests whether a named type derived
+// from int is accepted when it implements the unmarshaler interfaces,
+// because normally types like `int` and `any` are a forbidden data type.
+func TestForbiddenTypeImplementsUnmarshaler(t *testing.T) {
+	t.Run("IntImplsUnmarshalers", func(t *testing.T) {
+		require.NoError(t, yamagiconf.ValidateType[struct {
+			Un IntImplsUnmarshalers `yaml:"un"`
+		}]())
+	})
+
+	t.Run("IntImplsYAMLUnmarshaler", func(t *testing.T) {
+		require.NoError(t, yamagiconf.ValidateType[struct {
+			Un IntImplsYAMLUnmarshaler `yaml:"un"`
+		}]())
+	})
+
+	t.Run("AnySlcImplsTextUnmarshaler", func(t *testing.T) {
+		require.NoError(t, yamagiconf.ValidateType[struct {
+			Un AnySlcImplsTextUnmarshaler `yaml:"un"`
+		}]())
+	})
+
+	t.Run("AnySlcImplsYAMLUnmarshaler", func(t *testing.T) {
+		require.NoError(t, yamagiconf.ValidateType[struct {
+			Un AnySlcImplsYAMLUnmarshaler `yaml:"un"`
+		}]())
+	})
+}

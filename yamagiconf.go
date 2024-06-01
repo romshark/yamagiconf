@@ -765,13 +765,13 @@ func ValidateType[T any]() error {
 	stack := []reflect.Type{}
 	var traverse func(path string, tp reflect.Type) error
 	traverse = func(path string, tp reflect.Type) error {
+		if implementsInterface[encoding.TextUnmarshaler](tp) ||
+			implementsInterface[yaml.Unmarshaler](tp) {
+			return validateTypeImplementingIfaces(path, tp)
+		}
+
 		switch tp.Kind() {
 		case reflect.Struct:
-			if implementsInterface[encoding.TextUnmarshaler](tp) ||
-				implementsInterface[yaml.Unmarshaler](tp) {
-				return validateTypeImplementingIfaces(path, tp)
-			}
-
 			for _, p := range stack {
 				if p == tp {
 					// Recursive type
@@ -881,6 +881,9 @@ func validateTypeImplementingIfaces(path string, implementer reflect.Type) error
 	implementedIface := "yaml.Unmarshaler"
 	if implementsInterface[encoding.TextUnmarshaler](implementer) {
 		implementedIface = "encoding.TextUnmarshaler"
+	}
+	if implementer.Kind() != reflect.Struct {
+		return nil
 	}
 	for i := range implementer.NumField() {
 		f := implementer.Field(i)
