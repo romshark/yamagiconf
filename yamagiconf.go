@@ -275,10 +275,6 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 
 	switch tp.Kind() {
 	case reflect.Struct:
-		if implementsInterface[encoding.TextUnmarshaler](tp) ||
-			implementsInterface[yaml.Unmarshaler](tp) {
-			return nil
-		}
 		for i := range tp.NumField() {
 			ft := tp.Field(i)
 			if !ft.IsExported() {
