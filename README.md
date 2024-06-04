@@ -55,7 +55,8 @@ an error annotated with line and column in the YAML file if necessary.
 
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
-	then its validation method will be called.
+	then its validation method will be called using reflection
+	(doesn't apply to unexported fields which are invisible to `reflect`).
 	If it returns an error - the error will be reported.
 	Keeps your validation logic close to your configuration type definitions.
 	- Reports errors by `line:column` when possible.
