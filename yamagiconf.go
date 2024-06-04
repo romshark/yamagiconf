@@ -46,6 +46,8 @@ var (
 	ErrYAMLNullOnNonPointer = errors.New("cannot assign null to non-pointer type")
 	ErrYAMLBadNullLiteral   = errors.New("must be null, " +
 		"any other variants of null are not supported")
+	ErrYAMLNonStrOnTextUnmarsh = errors.New("value must be a string because the " +
+		"target type implements encoding.TextUnmarshaler")
 
 	ErrTypeRecursive   = errors.New("recursive type")
 	ErrTypeIllegalRoot = errors.New("root type must be a struct type and must not " +
@@ -80,6 +82,8 @@ var (
 //   - the yaml file contains any redeclared anchors.
 //   - the yaml file contains any unused anchors.
 //   - the yaml file contains any anchors with implicit null value (no value).
+//   - the yaml file assigns non-string values to Go types implementing the
+//     encoding.TextUnmarshaler interface.
 func LoadFile[T any](yamlFilePath string, config *T) error {
 	if config == nil {
 		return ErrConfigNil
@@ -661,6 +665,12 @@ func validateYAMLValues(
 	}
 	if node.Alias != nil {
 		anchors[node.Alias.Anchor].IsUsed = true
+	}
+
+	if implementsInterface[encoding.TextUnmarshaler](tp) &&
+		node.Kind != yaml.ScalarNode {
+		return fmt.Errorf("at %d:%d: %w: %s",
+			node.Line, node.Column, ErrYAMLNonStrOnTextUnmarsh, tp.String())
 	}
 
 	switch tp.Kind() {

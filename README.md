@@ -50,6 +50,8 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids unused anchors.
 	- 🚫 Forbids anchors with implicit `null` value (no value) like `foo: &bar`.
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
+	- 🚫 Forbids assigning non-string values to Go types that implement
+	the `encoding.TextUnmarshaler` interface.
 
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,

@@ -2571,3 +2571,79 @@ func TestForbiddenTypeImplementsUnmarshaler(t *testing.T) {
 		}]())
 	})
 }
+
+type TextUnmarshalerMap map[string]string
+
+var _ encoding.TextUnmarshaler = new(TextUnmarshalerMap)
+
+func (m *TextUnmarshalerMap) UnmarshalText(t []byte) error {
+	*m = TextUnmarshalerMap{string(t): string(t)}
+	return nil
+}
+
+func TestTextUnmarshalerMap(t *testing.T) {
+	var v struct {
+		Map TextUnmarshalerMap `yaml:"map"`
+	}
+	require.NoError(t, yamagiconf.Load("map: okay", &v))
+	require.Equal(t, TextUnmarshalerMap{"okay": "okay"}, v.Map)
+}
+
+func TestErrYAMLNonStrOnTextUnmarshMap(t *testing.T) {
+	var v struct {
+		Map TextUnmarshalerMap `yaml:"map"`
+	}
+	err := yamagiconf.Load("map:\n  foo: bar", &v)
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+}
+
+type TextUnmarshalerSlice []string
+
+var _ encoding.TextUnmarshaler = new(TextUnmarshalerSlice)
+
+func (m *TextUnmarshalerSlice) UnmarshalText(t []byte) error {
+	*m = TextUnmarshalerSlice{string(t)}
+	return nil
+}
+
+func TestTextUnmarshalerSlice(t *testing.T) {
+	var v struct {
+		Slice TextUnmarshalerSlice `yaml:"slice"`
+	}
+	require.NoError(t, yamagiconf.Load("slice: okay", &v))
+	require.Equal(t, TextUnmarshalerSlice{"okay"}, v.Slice)
+}
+
+func TestErrYAMLNonStrOnTextUnmarshSlice(t *testing.T) {
+	var v struct {
+		Slice TextUnmarshalerSlice `yaml:"slice"`
+	}
+	err := yamagiconf.Load("slice:\n  - foo\n  - bar", &v)
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+}
+
+type TextUnmarshalerArray2 [2]string
+
+var _ encoding.TextUnmarshaler = new(TextUnmarshalerArray2)
+
+func (m *TextUnmarshalerArray2) UnmarshalText(t []byte) error {
+	*m = TextUnmarshalerArray2{string(t)}
+	return nil
+}
+
+func TestErrYAMLNonStrOnTextUnmarshArray(t *testing.T) {
+	var v struct {
+		Slice TextUnmarshalerArray2 `yaml:"array"`
+	}
+	err := yamagiconf.Load("array:\n  - first\n  - second", &v)
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+}
+
+func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
+	var v struct {
+		Anchor [2]string             `yaml:"anchor"`
+		Slice  TextUnmarshalerArray2 `yaml:"alias"`
+	}
+	err := yamagiconf.Load("anchor: &a\n  - first\n  - second\nalias: *a", &v)
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+}
