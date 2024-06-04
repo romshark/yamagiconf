@@ -299,6 +299,9 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 			}
 		}
 	case reflect.Slice, reflect.Array:
+		if node != nil && node.Kind != yaml.SequenceNode {
+			node = nil
+		}
 		for i := range v.Len() {
 			path := fmt.Sprintf("%s[%d]", path, i)
 			var nodeItem *yaml.Node
@@ -312,6 +315,9 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 
 		}
 	case reflect.Map:
+		if node != nil && node.Kind != yaml.MappingNode {
+			node = nil
+		}
 		mapKeys := mapKeysSorted(v)
 		if node == nil {
 			for _, k := range mapKeys {

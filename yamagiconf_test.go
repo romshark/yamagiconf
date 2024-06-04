@@ -2572,12 +2572,12 @@ func TestForbiddenTypeImplementsUnmarshaler(t *testing.T) {
 	})
 }
 
-type TextUnmarshalerMap map[string]string
+type TextUnmarshalerMap map[ValidatedString]ValidatedString
 
 var _ encoding.TextUnmarshaler = new(TextUnmarshalerMap)
 
 func (m *TextUnmarshalerMap) UnmarshalText(t []byte) error {
-	*m = TextUnmarshalerMap{string(t): string(t)}
+	*m = TextUnmarshalerMap{ValidatedString(t): ValidatedString(t)}
 	return nil
 }
 
@@ -2585,8 +2585,8 @@ func TestTextUnmarshalerMap(t *testing.T) {
 	var v struct {
 		Map TextUnmarshalerMap `yaml:"map"`
 	}
-	require.NoError(t, yamagiconf.Load("map: okay", &v))
-	require.Equal(t, TextUnmarshalerMap{"okay": "okay"}, v.Map)
+	require.NoError(t, yamagiconf.Load("map: valid", &v))
+	require.Equal(t, TextUnmarshalerMap{"valid": "valid"}, v.Map)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshMap(t *testing.T) {
@@ -2597,12 +2597,12 @@ func TestErrYAMLNonStrOnTextUnmarshMap(t *testing.T) {
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
-type TextUnmarshalerSlice []string
+type TextUnmarshalerSlice []ValidatedString
 
 var _ encoding.TextUnmarshaler = new(TextUnmarshalerSlice)
 
 func (m *TextUnmarshalerSlice) UnmarshalText(t []byte) error {
-	*m = TextUnmarshalerSlice{string(t)}
+	*m = TextUnmarshalerSlice{ValidatedString(t)}
 	return nil
 }
 
@@ -2610,32 +2610,40 @@ func TestTextUnmarshalerSlice(t *testing.T) {
 	var v struct {
 		Slice TextUnmarshalerSlice `yaml:"slice"`
 	}
-	require.NoError(t, yamagiconf.Load("slice: okay", &v))
-	require.Equal(t, TextUnmarshalerSlice{"okay"}, v.Slice)
+	require.NoError(t, yamagiconf.Load("slice: valid", &v))
+	require.Equal(t, TextUnmarshalerSlice{"valid"}, v.Slice)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshSlice(t *testing.T) {
 	var v struct {
 		Slice TextUnmarshalerSlice `yaml:"slice"`
 	}
-	err := yamagiconf.Load("slice:\n  - foo\n  - bar", &v)
+	err := yamagiconf.Load("slice:\n  - valid\n  - valid", &v)
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
-type TextUnmarshalerArray2 [2]string
+type TextUnmarshalerArray2 [2]ValidatedString
 
 var _ encoding.TextUnmarshaler = new(TextUnmarshalerArray2)
 
 func (m *TextUnmarshalerArray2) UnmarshalText(t []byte) error {
-	*m = TextUnmarshalerArray2{string(t)}
+	*m = TextUnmarshalerArray2{ValidatedString(t), ValidatedString(t)}
 	return nil
+}
+
+func TestTextUnmarshalerArray2(t *testing.T) {
+	var v struct {
+		Array2 TextUnmarshalerArray2 `yaml:"array"`
+	}
+	require.NoError(t, yamagiconf.Load("array: valid", &v))
+	require.Equal(t, TextUnmarshalerArray2{"valid", "valid"}, v.Array2)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshArray(t *testing.T) {
 	var v struct {
 		Slice TextUnmarshalerArray2 `yaml:"array"`
 	}
-	err := yamagiconf.Load("array:\n  - first\n  - second", &v)
+	err := yamagiconf.Load("array:\n  - valid\n  - valid", &v)
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
@@ -2644,6 +2652,6 @@ func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
 		Anchor [2]string             `yaml:"anchor"`
 		Slice  TextUnmarshalerArray2 `yaml:"alias"`
 	}
-	err := yamagiconf.Load("anchor: &a\n  - first\n  - second\nalias: *a", &v)
+	err := yamagiconf.Load("anchor: &a\n  - valid\n  - valid\nalias: *a", &v)
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
