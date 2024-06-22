@@ -24,6 +24,9 @@ import (
 )
 
 // All possible errors.
+// Errors in the YAML document begin with ErrYAML...
+// Errors in the Go target type begin with ErrType...
+// Errors in the env variables begin with ErrEnv...
 var (
 	ErrConfigNil            = errors.New("cannot load into nil config")
 	ErrValidation           = errors.New("validation")
@@ -48,6 +51,12 @@ var (
 		"any other variants of null are not supported")
 	ErrYAMLNonStrOnTextUnmarsh = errors.New("value must be a string because the " +
 		"target type implements encoding.TextUnmarshaler")
+
+	// ErrYAMLEmptyArrayItem applies to both Go arrays and slices even though
+	// an empty item would be parsed correctly as zero-value in case of Go arrays
+	// to preserve consistency and avoid having exceptional behavior for arrays.
+	ErrYAMLEmptyArrayItem = errors.New("avoid empty items in arrays as those will not " +
+		"be appended to the target Go slice")
 
 	ErrTypeRecursive   = errors.New("recursive type")
 	ErrTypeIllegalRoot = errors.New("root type must be a struct type and must not " +
@@ -704,6 +713,12 @@ func validateYAMLValues(
 	case reflect.Slice, reflect.Array:
 		tp := tp.Elem()
 		for index, node := range node.Content {
+			if node.Tag == "!!null" && node.Value == "" {
+				// If it's a null item with no value then no zero value item would be
+				// appended to a Go slice.
+				return fmt.Errorf("at %d:%d: %q (%s): %w",
+					node.Line, node.Column, yamlTag, path, ErrYAMLEmptyArrayItem)
+			}
 			path := fmt.Sprintf("%s[%d]", path, index)
 			if err := validateYAMLValues(anchors, yamlTag, path, tp, node); err != nil {
 				return err

@@ -17,7 +17,8 @@ keeps your configs simple and consistent
 by being *more restrictive than your regular YAML parser* 🚷 allowing only a subset of YAML and enforcing some restrictions to the target Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
-[YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell), and you can't stand complex configurations then yamagiconf is for you!
+[YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell),
+and you can't stand complex, unexplorable and unintuitive configurations then yamagiconf is for you!
 
 🪄 It's magic because it uses [reflect](https://pkg.go.dev/reflect) to find recursively all
 values of types that implement `interface { Validate() error }` and calls them reporting
@@ -42,7 +43,7 @@ an error annotated with line and column in the YAML file if necessary.
 - YAML restrictions:
 	- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
 	allows only `true` and `false`.
-	- 🚫 Forbids the use of `~` and `Null`, allows only `null` for nilables.
+	- 🚫 Forbids the use of `~`, `Null` and other variations, allows only `null` for nilables.
 	- 🚫 Forbids assigning `null` to non-nilables (which normally would assign zero value).
 	- 🚫 Forbids fields in the YAML file that aren't specified by the Go type.
 	- 🚫 Forbids the use of [YAML tags](https://yaml.org/spec/1.2.2/#3212-tags).
@@ -52,7 +53,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
 	- 🚫 Forbids assigning non-string values to Go types that implement
 	the `encoding.TextUnmarshaler` interface.
-
+	- 🚫 Forbids empty array items ([see rationale](#why-are-empty-array-items-forbidden)).
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
 	then its validation method will be called using reflection
@@ -138,3 +139,23 @@ func main() {
 	fmt.Printf("%#v\n", c)
 }
 ```
+
+## FAQ
+
+### Why are empty array items forbidden?
+
+Consider the following YAML array:
+
+```yaml
+array:
+  - 
+  - ''
+  - ""
+  - x
+```
+
+Even though this YAML array works as expect with a Go array:
+`[4]string{"", "", "", "x"}`, parsing the same YAML into a Go slice will result in
+the empty item being ommited: `[]string{"", "", "x"}` which is counterintuitive.
+Therefore, yamagiconf forbids empty array items in general to keep behavior
+consistent and intuitive independent of the Go target type.

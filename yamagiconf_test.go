@@ -1319,6 +1319,39 @@ func TestLoadErrYAMLTagUsed(t *testing.T) {
 	})
 }
 
+func TestLoadErrYAMLEmptyArrayItem(t *testing.T) {
+	t.Run("in_slice", func(t *testing.T) {
+		type TestConfig struct {
+			Slice []string `yaml:"slice"`
+		}
+		_, err := LoadSrc[TestConfig](`
+slice:
+  - ''
+  - ""
+  - ok1
+  - # this is wrong
+  - ok2
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
+		require.Equal(t,
+			`at 6:4: "slice" (TestConfig.Slice): avoid empty items in arrays as those `+
+				`will not be appended to the target Go slice`,
+			err.Error())
+	})
+
+	t.Run("in_array2", func(t *testing.T) {
+		type TestConfig struct {
+			Array2 [2]string `yaml:"array2"`
+		}
+		_, err := LoadSrc[TestConfig]("array2:\n  - ''\n  -\n")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
+		require.Equal(t,
+			`at 3:4: "array2" (TestConfig.Array2): avoid empty items in arrays as those `+
+				`will not be appended to the target Go slice`,
+			err.Error())
+	})
+}
+
 func TestLoadErrNilConfig(t *testing.T) {
 	type TestConfig struct {
 		Foo int8 `yaml:"foo"`
