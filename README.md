@@ -37,7 +37,7 @@ an error annotated with line and column in the YAML file if necessary.
 	the `yaml.Unmarshaler` interface.
 	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
 	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
-	- 🚫 Forbids the use of YAML tag option `"inline"` for non-embedded structs and
+	- 🚫 Forbids the use of YAML struct tag option `"inline"` for non-embedded structs and
 	requires embedded structs to use option `"inline"`.
 - YAML restrictions:
 	- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
@@ -61,7 +61,7 @@ an error annotated with line and column in the YAML file if necessary.
 	Keeps your validation logic close to your configuration type definitions.
 	- Reports errors by `line:column` when possible.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
-	struct validation tags.
+	validation struct tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
 	- Supports `encoding.TextUnmarshaler` and `yaml.Unmarshaler`
 	(except for the root struct type).

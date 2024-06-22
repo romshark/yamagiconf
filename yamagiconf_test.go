@@ -969,7 +969,7 @@ func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagOnUnexported)
 	require.Equal(t,
-		"at TestConfig.unexported: yaml tag on unexported field",
+		"at TestConfig.unexported: yaml struct tag on unexported field",
 		err.Error())
 
 	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
@@ -1094,7 +1094,7 @@ func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagRedefined)
 	require.Equal(t, `at TestConfig.Second: yaml tag "x" `+
 		`previously defined on field TestConfig.First: `+
-		`a yaml tag must be unique`, err.Error())
+		`a yaml struct tag must be unique`, err.Error())
 
 	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }

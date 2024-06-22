@@ -33,8 +33,8 @@ var (
 	ErrYAMLMalformed       = errors.New("malformed YAML")
 	ErrYAMLInlineNonAnon   = errors.New("inline yaml on non-embedded field")
 	ErrYAMLInlineOpt       = errors.New("use `yaml:\",inline\"` for embedded fields")
-	ErrYAMLTagOnUnexported = errors.New("yaml tag on unexported field")
-	ErrYAMLTagRedefined    = errors.New("a yaml tag must be unique")
+	ErrYAMLTagOnUnexported = errors.New("yaml struct tag on unexported field")
+	ErrYAMLTagRedefined    = errors.New("a yaml struct tag must be unique")
 	ErrYAMLAnchorRedefined = errors.New("yaml anchors must be unique throughout " +
 		"the whole document")
 	ErrYAMLAnchorUnused   = errors.New("yaml anchors must be referenced at least once")
@@ -56,7 +56,7 @@ var (
 	ErrTypeEnvTagOnUnexported = errors.New("env tag on unexported field")
 	ErrTypeTagOnInterfaceImpl = errors.New("implementations of interfaces " +
 		"yaml.Unmarshaler or encoding.TextUnmarshaler must not " +
-		"contain yaml and env tags")
+		"contain yaml and env struct tags")
 	ErrTypeEnvOnYAMLUnmarsh = errors.New("env var on yaml.Unmarshaler implementation")
 	ErrTypeNoExportedFields = errors.New("no exported fields")
 	ErrTypeInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
