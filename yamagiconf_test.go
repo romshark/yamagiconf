@@ -2655,3 +2655,107 @@ func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
 	err := yamagiconf.Load("anchor: &a\n  - valid\n  - valid\nalias: *a", &v)
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
+
+// TestZeroValue tests whether no value in YAML results in zero Go value.
+func TestZeroValue(t *testing.T) {
+	type NoValue struct {
+		Int8            int8              `yaml:"int8"`
+		Int16           int16             `yaml:"int16"`
+		Int32           int32             `yaml:"int32"`
+		Int64           int64             `yaml:"int64"`
+		Uint8           uint8             `yaml:"uint8"`
+		Uint16          uint16            `yaml:"uint16"`
+		Uint32          uint32            `yaml:"uint32"`
+		Uint64          uint64            `yaml:"uint64"`
+		Float32         float32           `yaml:"float32"`
+		Float64         float64           `yaml:"float64"`
+		String          string            `yaml:"string"`
+		Bool            bool              `yaml:"bool"`
+		ArrayZero       []bool            `yaml:"array-zero"`
+		Array2Zero      [2]bool           `yaml:"array2-zero"`
+		MapZero         map[string]string `yaml:"map-zero"`
+		TextUnmarshaler TextUnmarshaler   `yaml:"text-unmarshaler"`
+		YAMLUnmarshaler YAMLUnmarshaler   `yaml:"yaml-unmarshaler"`
+
+		PtrInt8            *int8            `yaml:"ptr-int8"`
+		PtrInt16           *int16           `yaml:"ptr-int16"`
+		PtrInt32           *int32           `yaml:"ptr-int32"`
+		PtrInt64           *int64           `yaml:"ptr-int64"`
+		PtrUint8           *uint8           `yaml:"ptr-uint8"`
+		PtrUint16          *uint16          `yaml:"ptr-uint16"`
+		PtrUint32          *uint32          `yaml:"ptr-uint32"`
+		PtrUint64          *uint64          `yaml:"ptr-uint64"`
+		PtrFloat32         *float32         `yaml:"ptr-float32"`
+		PtrFloat64         *float64         `yaml:"ptr-float64"`
+		PtrString          *string          `yaml:"ptr-string"`
+		PtrBool            *bool            `yaml:"ptr-bool"`
+		PtrArray2Zero      *[2]bool         `yaml:"ptr-array2-zero"`
+		PtrTextUnmarshaler *TextUnmarshaler `yaml:"ptr-text-unmarshaler"`
+		PtrYAMLUnmarshaler *YAMLUnmarshaler `yaml:"ptr-yaml-unmarshaler"`
+	}
+	type Container struct {
+		String string `yaml:"string"`
+	}
+	type TestConfig struct {
+		NoValue    `yaml:",inline"`
+		MapStrStr  map[string]string `yaml:"map-str-str"`
+		MapStrBool map[string]bool   `yaml:"map-str-bool"`
+		Container  Container         `yaml:"container"`
+	}
+
+	var c TestConfig
+	err := yamagiconf.Load(`# test YAML file
+int8:
+int16:
+int32:
+int64:
+uint8:
+uint16:
+uint32:
+uint64:
+float32:
+float64:
+string:
+bool:
+array-zero:
+array2-zero:
+map-zero:
+text-unmarshaler:
+yaml-unmarshaler:
+ptr-int8:
+ptr-int16:
+ptr-int32:
+ptr-int64:
+ptr-uint8:
+ptr-uint16:
+ptr-uint32:
+ptr-uint64:
+ptr-float32:
+ptr-float64:
+ptr-string:
+ptr-bool:
+ptr-array2-zero:
+ptr-text-unmarshaler:
+ptr-yaml-unmarshaler:
+
+# non-zero with zero fields
+map-str-str:
+  key:
+map-str-bool:
+  key:
+container:
+  string:
+`, &c)
+	require.NoError(t, err)
+	require.Zero(t, c.NoValue)
+
+	require.Len(t, c.MapStrStr, 1)
+	require.Contains(t, c.MapStrStr, "key")
+	require.Zero(t, c.MapStrStr["key"])
+
+	require.Len(t, c.MapStrBool, 1)
+	require.Contains(t, c.MapStrBool, "key")
+	require.Zero(t, c.MapStrBool["key"])
+
+	require.Zero(t, c.Container)
+}

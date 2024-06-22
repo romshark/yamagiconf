@@ -752,7 +752,9 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 		}
 	}
 	if kind == reflect.Bool && node.Alias == nil {
-		if v := node.Value; v != "true" && v != "false" {
+		switch node.Value {
+		case "true", "false", "":
+		default:
 			return ErrYAMLBadBoolLiteral
 		}
 	}
