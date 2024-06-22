@@ -14,7 +14,8 @@
 
 The heavily opinionated **YA**ML **Magi**c **Conf**iguration framework for Go
 keeps your configs simple and consistent
-by being *more restrictive than your regular YAML parser* 🚷 allowing only a subset of YAML and enforcing some restrictions to the target Go type.
+by being *more restrictive than your regular YAML parser* 🚷 allowing only a subset of YAML
+and enforcing some restrictions to the target Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell),
@@ -32,12 +33,14 @@ an error annotated with line and column in the YAML file if necessary.
 	Only maps, slices, arrays and deterministic primitives are allowed.
 	- ❗️ Requires `yaml` struct tags on all exported fields.
 	- ❗️ Requires `env` struct tags to be POSIX-style.
-	- 🚫 Forbids the use of `env` struct tag on non-primitive fields
-	(allows only floats, ints, strings, bool).
+	- 🚫 Forbids the use of `env` struct tag on non-primitive fields.
+	Allows only floats, ints, strings, bool and types that implement the
+	[`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids the use of `env` on primitive fields implementing
-	the `yaml.Unmarshaler` interface.
+	the [`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler) interface.
 	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
-	`encoding.TextUnmarshaler` and/or `yaml.Unmarshaler`.
+	[`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) and/or
+	[`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler).
 	- 🚫 Forbids the use of YAML struct tag option `"inline"` for non-embedded structs and
 	requires embedded structs to use option `"inline"`.
 - YAML restrictions:
@@ -52,7 +55,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids anchors with implicit `null` value (no value) like `foo: &bar`.
 	- ❗️ Requires fields specified in the configuration type to be present in the YAML file.
 	- 🚫 Forbids assigning non-string values to Go types that implement
-	the `encoding.TextUnmarshaler` interface.
+	the [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids empty array items ([see rationale](#why-are-empty-array-items-forbidden)).
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
@@ -64,7 +67,8 @@ an error annotated with line and column in the YAML file if necessary.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
 	validation struct tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
-	- Supports `encoding.TextUnmarshaler` and `yaml.Unmarshaler`
+	- Supports [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler)
+	and [`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler)
 	(except for the root struct type).
 	- Supports `time.Duration`.
 
@@ -141,6 +145,8 @@ func main() {
 ```
 
 ## FAQ
+
+### 
 
 ### Why are empty array items forbidden?
 
