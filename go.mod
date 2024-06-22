@@ -3,7 +3,7 @@ module github.com/romshark/yamagiconf
 go 1.22.2
 
 require (
-	github.com/go-playground/validator/v10 v10.21.0
+	github.com/go-playground/validator/v10 v10.22.0
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/yaml.v3 v3.0.1
 )
