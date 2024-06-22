@@ -172,6 +172,13 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 			line, column, yamlTag := mustFindLocationByValidatorNamespace[T](
 				err.StructNamespace(), &rootNode,
 			)
+			if yamlTag == "-" {
+				// TODO: report env var name if any.
+
+				// Ignored field, use Go field name instead of tag.
+				return fmt.Errorf("at %s: %w: %q",
+					err.StructNamespace(), ErrValidateTagViolation, err.Tag())
+			}
 			return fmt.Errorf("at %d:%d: %q %w: %q",
 				line, column, yamlTag, ErrValidateTagViolation, err.Tag())
 		}
@@ -292,7 +299,7 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 			fv := v.Field(i)
 			yamlTag := getYAMLFieldName(ft.Tag)
 			var nodeValue *yaml.Node
-			if node != nil {
+			if node != nil && yamlTag != "-" {
 				nodeValue = node
 				if !ft.Anonymous {
 					nodeValue = findContentNodeByTag(node, yamlTag)
@@ -620,6 +627,9 @@ FOR_PATH:
 		}
 		f, _ := currentTp.FieldByName(fieldName)
 		yamlTag = getYAMLFieldName(f.Tag)
+		if yamlTag == "-" {
+			continue // Ignored field.
+		}
 		for i := 0; i < len(currentNode.Content); i += 2 {
 			if currentNode.Content[i].Value == yamlTag {
 				currentTp = f.Type
@@ -696,6 +706,9 @@ func validateYAMLValues(
 				continue
 			}
 			yamlTag := getYAMLFieldName(f.Tag)
+			if yamlTag == "-" {
+				continue // Ignored field.
+			}
 			path := path + "." + f.Name
 			contentNode := node
 			if !f.Anonymous {
@@ -814,8 +827,12 @@ func ValidateType[T any]() error {
 			yamlTags := map[string]string{} // tag -> path
 			for i := range tp.NumField() {
 				f := tp.Field(i)
-				path := path + "." + f.Name
 				yamlTag := getYAMLFieldName(f.Tag)
+				_, hasEnvTag := f.Tag.Lookup("env")
+				if yamlTag == "-" && !hasEnvTag {
+					continue // Ignored field.
+				}
+				path := path + "." + f.Name
 				isInline := yamlTagIsInline(f.Tag)
 				isExported := f.IsExported()
 				if isExported && f.Anonymous && (yamlTag != "" || !isInline) {
@@ -916,13 +933,15 @@ func validateTypeImplementingIfaces(path string, implementer reflect.Type) error
 	}
 	for i := range implementer.NumField() {
 		f := implementer.Field(i)
-		if tag := getYAMLFieldName(f.Tag); tag != "" {
+		if tag := getYAMLFieldName(f.Tag); tag != "" && tag != "-" {
 			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
-				"\"yaml\" (%q): %w", path, implementedIface, tag, ErrTypeTagOnInterfaceImpl)
+				"\"yaml\" (%q): %w", path, implementedIface, tag,
+				ErrTypeTagOnInterfaceImpl)
 		}
 		if tag := f.Tag.Get("env"); tag != "" {
 			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
-				"\"env\" (%q): %w", path, implementedIface, tag, ErrTypeTagOnInterfaceImpl)
+				"\"env\" (%q): %w", path, implementedIface, tag,
+				ErrTypeTagOnInterfaceImpl)
 		}
 	}
 	return nil

@@ -58,6 +58,14 @@ func TestLoadFile(t *testing.T) {
 		// of type int which is unsupported.
 		//lint:ignore U1000 no need to use it.
 		ignored int
+
+		// Fields ignored due to struct tag yaml:"-"
+		IgnoredAny  any  `yaml:"-"`
+		IgnoredInt  int  `yaml:"-"`
+		IgnoredUint uint `yaml:"-"`
+
+		//lint:ignore U1000 no need to use it.
+		unexportedIgnoredNoYAML int `yaml:"-"`
 	}
 	type TestConfig struct {
 		Embedded  `yaml:",inline"`
@@ -666,6 +674,17 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			"at TestConfig.Wrong: env var on yaml.Unmarshaler implementation: "+
 				"*yamagiconf_test.YAMLUnmarshaler", err.Error())
 	})
+
+	t.Run("on_noyaml_field", func(t *testing.T) {
+		type TestConfig struct {
+			X string `yaml:"x"` // This is here to avoid "no exported fields" error.
+			Y int    `yaml:"-" env:"NOTOK"`
+		}
+		_, err := LoadSrc[TestConfig]("x: x\n")
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
+		require.Equal(t,
+			"at TestConfig.Y: env var on unsupported type: int", err.Error())
+	})
 }
 
 type TestConfigRecurThroughContainerPtr struct {
@@ -1051,7 +1070,7 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 	})
 }
 
-func TestValidateTypeErrYAMLNoInlineOpt(t *testing.T) {
+func TestValidateTypeErrYAMLInlineOpt(t *testing.T) {
 	t.Run("no_inline", func(t *testing.T) {
 		type Container struct {
 			Str string `yaml:"str"`
@@ -1099,7 +1118,7 @@ func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
-func TestValidateTypeErrEnvTagOnUnexported(t *testing.T) {
+func TestValidateTypeErrTypeEnvTagOnUnexported(t *testing.T) {
 	type TestConfig struct {
 		Ok string `yaml:"okay"`
 		//lint:ignore U1000 ignore for testing purposes
@@ -1120,6 +1139,8 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 		unexported1 string
 		//lint:ignore U1000 ignore for testing purposes
 		unexported2 string
+
+		ExportedButIgnored string `yaml:"-"`
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
 	require.ErrorIs(t, err, yamagiconf.ErrTypeNoExportedFields)
@@ -1128,7 +1149,7 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
-func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
+func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 	t.Run("NoopTextUnmarshalerWithYAMLTag", func(t *testing.T) {
 		type TestConfig struct {
 			X NoopTextUnmarshalerWithYAMLTag `yaml:"x"`
@@ -1179,6 +1200,28 @@ func TestValidateTypeErrTagOnInterfaceImpl(t *testing.T) {
 			yamagiconf.ErrTypeTagOnInterfaceImpl.Error(), err.Error())
 
 		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+	})
+
+	t.Run("NoopTextUnmarshalerWithYAMLTag/ignored", func(t *testing.T) {
+		// Make sure NoopTextUnmarshalerWithYAMLTag doesn't cause an error
+		// because it's ignored using the yaml:"-" struct tag.
+		type TestConfig struct {
+			X NoopTextUnmarshalerWithYAMLTag `yaml:"-"`
+			Y string                         `yaml:"y"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.NoError(t, err)
+	})
+
+	t.Run("NoopYAMLUnmarshalerWithYAMLTag/ignored", func(t *testing.T) {
+		// Make sure NoopYAMLUnmarshalerWithYAMLTag_ignored doesn't cause an error
+		// because it's ignored using the yaml:"-" struct tag.
+		type TestConfig struct {
+			X NoopYAMLUnmarshalerWithYAMLTag `yaml:"-"`
+			Y string                         `yaml:"y"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.NoError(t, err)
 	})
 }
 
@@ -1477,8 +1520,10 @@ func TestLoadErr(t *testing.T) {
 func TestValidation(t *testing.T) {
 	type MapValVal map[ValidatedString]ValidatedString
 	type Container struct {
-		// Tag `validate:"required"` requires it to be non-zero.
-		Str            string             `yaml:"required-str" validate:"required"`
+		// Tag `validate:"required"` requires those fields to be non-zero.
+		Str       string `yaml:"required-str" validate:"required"`
+		NoYAMLStr string `yaml:"-" env:"NOYAML_STR" validate:"required"`
+
 		Slice          []ValidatedString  `yaml:"slice"`
 		SlicePtr       []*ValidatedString `yaml:"slice-ptr"`
 		ArrayMapValVal [1]MapValVal       `yaml:"array-map-val-val"`
@@ -1488,6 +1533,7 @@ func TestValidation(t *testing.T) {
 	}
 
 	t.Run("required_ok", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_ok")
 		c, err := LoadSrc[TestConfig](`
 container:
   required-str: ok
@@ -1503,9 +1549,10 @@ container:
 		valid := ValidatedString("valid")
 		require.NoError(t, err)
 		require.Equal(t, TestConfig{Container: Container{
-			Str:      "ok",
-			Slice:    []ValidatedString{"valid", "valid"},
-			SlicePtr: []*ValidatedString{&valid, &valid},
+			Str:       "ok",
+			Slice:     []ValidatedString{"valid", "valid"},
+			SlicePtr:  []*ValidatedString{&valid, &valid},
+			NoYAMLStr: "noyaml_ok",
 		}}, *c)
 		require.NoError(t, yamagiconf.Validate(*c))
 	})
@@ -1535,6 +1582,7 @@ container:
 	})
 
 	t.Run("validate_err_in_slice", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_ok")
 		c, err := LoadSrc[TestConfig](`
 container:
   required-str: ok
@@ -1559,6 +1607,7 @@ container:
 	})
 
 	t.Run("validate_err_in_slice_ptr", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_ok")
 		c, err := LoadSrc[TestConfig](`
 container:
   required-str: ok
@@ -1583,6 +1632,7 @@ container:
 	})
 
 	t.Run("validate_err_in_map_key", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_ok")
 		c, err := LoadSrc[TestConfig](`
 container:
   required-str: ok
@@ -1608,6 +1658,7 @@ container:
 	})
 
 	t.Run("validate_err_in_map_val", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_ok")
 		c, err := LoadSrc[TestConfig](`
 container:
   required-str: ok
@@ -1630,12 +1681,38 @@ container:
 			`at 11:14: at TestConfig.Container.ArrayMapValVal[0][valid]:`,
 			`at TestConfig.Container.ArrayMapValVal[0][valid]:`))
 	})
+
+	t.Run("required_env_error", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`
+container:
+  required-str: 'ok'
+  slice:
+    - valid
+    - valid
+  slice-ptr:
+    - valid
+    - valid
+  array-map-val-val:
+    - null
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrValidateTagViolation)
+		require.Equal(t,
+			`at TestConfig.Container.NoYAMLStr: violates validation rule: "required"`,
+			err.Error())
+		validateErr := yamagiconf.Validate(
+			TestConfig{Container: Container{Str: ""}},
+		)
+		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+			`at TestConfig.Container.NoYAMLStr:`, "at TestConfig.Container.Str:"))
+	})
 }
 
 type TestConfWithValid struct {
 	Foo       string          `yaml:"foo" validate:"required"`
 	Bar       string          `yaml:"bar"`
 	Container ContainerStruct `yaml:"container"`
+
+	NoYAMLStr string `yaml:"-" env:"NOYAML_STR" validate:"required"`
 }
 
 var _ yamagiconf.Validator = new(TestConfWithValid)
@@ -1683,6 +1760,7 @@ func PtrTo[T any](t T) *T { return &t }
 
 func TestValidator(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "noyaml_text")
 		c, err := LoadSrc[TestConfWithValid](`
 foo: a
 bar: b
@@ -1709,10 +1787,12 @@ container:
 				Slice:                 []ValidatedString{"valid", "valid"},
 				Map:                   ValidatedMap{"valid": "valid"},
 			},
+			NoYAMLStr: "noyaml_text",
 		}, *c)
 	})
 
 	t.Run("ok_null", func(t *testing.T) {
+		t.Setenv("NOYAML_STR", "null")
 		c, err := LoadSrc[TestConfWithValid](`
 foo: a
 bar: b
@@ -1732,6 +1812,7 @@ container:
 				ValidatedString:    "valid",
 				ValidatedStringPtr: "valid",
 			},
+			NoYAMLStr: "null",
 		}, *c)
 	})
 
@@ -1906,6 +1987,8 @@ func TestLoadEnvVar(t *testing.T) {
 		UnmarshalerText    TextUnmarshaler  `yaml:"unm-text" env:"UNMARSH_TEXT"`
 		PtrUnmarshalerText *TextUnmarshaler `yaml:"ptr-unm-text" env:"PTR_UNMARSH_TEXT"`
 
+		NoYAMLStr string `yaml:"-" env:"NOYAML_STR"`
+
 		// ignored must be ignored by yamagiconf even though it's
 		// of type int which is unsupported.
 		//lint:ignore U1000 no need to use it.
@@ -1962,6 +2045,8 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("FOO", "bar")
 	t.Setenv("UNMARSH_TEXT", "ut")
 	t.Setenv("PTR_UNMARSH_TEXT", "ptr_ut")
+
+	t.Setenv("NOYAML_STR", "test_noyaml")
 
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
@@ -2097,6 +2182,8 @@ ptr-unm-text: null
 	}, c.Map2D)
 	require.Equal(t, "ut", c.UnmarshalerText.Str)
 	require.Equal(t, "ptr_ut", c.PtrUnmarshalerText.Str)
+
+	require.Equal(t, c.NoYAMLStr, "test_noyaml")
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {
@@ -2147,6 +2234,8 @@ func TestLoadEnvVarNoOverwrite(t *testing.T) {
 		PtrUint64Null   *uint64        `yaml:"ptr-uint64-null" env:"PTR_UINT_64_NULL"`
 		PtrTimeNull     *time.Time     `yaml:"ptr-time-null" env:"PTR_TIME_NULL"`
 		PtrDurationNull *time.Duration `yaml:"ptr-duration-null" env:"PTR_DURATION_NULL"`
+
+		NoYAMLStr string `yaml:"-" env:"NOYAML_STR"`
 	}
 	c, err := LoadSrc[TestConfig](`
 bool_false: true
@@ -2244,6 +2333,8 @@ ptr-duration-null: null
 	require.Nil(t, c.PtrUint64Null)
 	require.Nil(t, c.PtrTimeNull)
 	require.Nil(t, c.PtrDurationNull)
+
+	require.Zero(t, c.NoYAMLStr)
 }
 
 func TestLoadEnvVarErr(t *testing.T) {
@@ -2446,6 +2537,20 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 			"expected uint64: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
+
+	t.Run("bool_noyaml", func(t *testing.T) {
+		type TestConfig struct {
+			X string `yaml:"x"` // This is here to avoid "no exported fields" error.
+
+			Bool bool `yaml:"-" env:"BOOL"`
+		}
+		t.Setenv("BOOL", "no")
+		_, err := LoadSrc[TestConfig](`x: x`)
+		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
+		require.Equal(t,
+			"at TestConfig.Bool: invalid env var BOOL: expected bool",
+			err.Error())
+	})
 }
 
 type (
@@ -2491,6 +2596,8 @@ func TestLoadTextUnmarshaler(t *testing.T) {
 	require.Equal(t, "t3", c.U1Ptr.Str)
 }
 
+// CompareErrMsgWithPrefix compares the suffixes of error messages of a and b,
+// assuming that a has prefix aPrefix and b has prefix bPrefix.
 func CompareErrMsgWithPrefix(a, b error, aPrefix, bPrefix string) error {
 	if a == nil || b == nil {
 		return fmt.Errorf("both a (nil? %t) and b (nil? %t) must not be nil",
