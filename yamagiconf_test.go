@@ -1446,6 +1446,40 @@ func TestLoadErr(t *testing.T) {
 		require.NotZero(t, c)
 	})
 
+	t.Run("multidocument", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`# Second doc contains different data.
+---
+foo: 1
+---
+foo: 2
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
+		require.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
+	})
+
+	t.Run("multidocument_second_doc_not_to_spec", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`# Second doc can't be decoded to TestConfig.
+---
+foo: 1
+---
+bar: 2
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
+		require.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
+	})
+
+	t.Run("multidocument_error_in_second_file", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig](`# Second doc contains a syntax error.
+---
+foo: 1
+---
+:
+`)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
+		require.Equal(t, yamagiconf.ErrYAMLMultidoc.Error()+
+			": yaml: line 4: did not find expected key", err.Error())
+	})
+
 	t.Run("unsupported_boolean_literal", func(t *testing.T) {
 		type TestConfig struct {
 			Boolean bool `yaml:"boolean"`

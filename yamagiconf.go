@@ -32,6 +32,7 @@ var (
 	ErrValidation           = errors.New("validation")
 	ErrValidateTagViolation = errors.New("violates validation rule")
 
+	ErrYAMLMultidoc        = errors.New("multi-document YAML files are not supported")
 	ErrYAMLEmptyFile       = errors.New("empty file")
 	ErrYAMLMalformed       = errors.New("malformed YAML")
 	ErrYAMLInlineNonAnon   = errors.New("inline yaml on non-embedded field")
@@ -127,8 +128,19 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 	}
 
 	var rootNode yaml.Node
-	if err := newDecoderYAML(yamlSource).Decode(&rootNode); err != nil {
-		return fmt.Errorf("decoding yaml structure: %w", err)
+	{
+		dec := newDecoderYAML(yamlSource)
+		if err := dec.Decode(&rootNode); err != nil {
+			return fmt.Errorf("decoding yaml structure: %w", err)
+		}
+
+		// Check if multi-doc
+		var n yaml.Node
+		if err = dec.Decode(&n); err == nil {
+			return fmt.Errorf("at %d:%d: %w", n.Line, n.Column, ErrYAMLMultidoc)
+		} else if !errors.Is(err, io.EOF) {
+			return fmt.Errorf("%w: %w", ErrYAMLMultidoc, err)
+		}
 	}
 
 	configType := reflect.TypeOf(config).Elem()
