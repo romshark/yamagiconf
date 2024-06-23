@@ -1987,7 +1987,8 @@ func TestLoadEnvVar(t *testing.T) {
 		UnmarshalerText    TextUnmarshaler  `yaml:"unm-text" env:"UNMARSH_TEXT"`
 		PtrUnmarshalerText *TextUnmarshaler `yaml:"ptr-unm-text" env:"PTR_UNMARSH_TEXT"`
 
-		NoYAMLStr string `yaml:"-" env:"NOYAML_STR"`
+		NoYAMLStr  string `yaml:"-" env:"NOYAML_STR"`
+		NoYAMLStr2 string `yaml:"-" env:"NOYAML_STR"`
 
 		// ignored must be ignored by yamagiconf even though it's
 		// of type int which is unsupported.
@@ -2184,6 +2185,7 @@ ptr-unm-text: null
 	require.Equal(t, "ptr_ut", c.PtrUnmarshalerText.Str)
 
 	require.Equal(t, c.NoYAMLStr, "test_noyaml")
+	require.Equal(t, c.NoYAMLStr2, "test_noyaml")
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {

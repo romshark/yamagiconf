@@ -828,30 +828,28 @@ func ValidateType[T any]() error {
 			for i := range tp.NumField() {
 				f := tp.Field(i)
 				yamlTag := getYAMLFieldName(f.Tag)
-				_, hasEnvTag := f.Tag.Lookup("env")
-				if yamlTag == "-" && !hasEnvTag {
-					continue // Ignored field.
-				}
+				yamlIgnored := yamlTag == "-"
 				path := path + "." + f.Name
-				isInline := yamlTagIsInline(f.Tag)
 				isExported := f.IsExported()
-				if isExported && f.Anonymous && (yamlTag != "" || !isInline) {
-					return fmt.Errorf("at %s: %w", path, ErrYAMLInlineOpt)
-				}
-				if isExported && !f.Anonymous && isInline {
-					return fmt.Errorf("at %s: %w", path, ErrYAMLInlineNonAnon)
-				}
-				if yamlTag == "" && isExported && !f.Anonymous {
-					return fmt.Errorf("at %s: %w", path, ErrTypeMissingYAMLTag)
-				} else if yamlTag != "" && !isExported {
-					return fmt.Errorf("at %s: %w", path, ErrYAMLTagOnUnexported)
+				if !yamlIgnored {
+					isInline := yamlTagIsInline(f.Tag)
+					switch {
+					case isExported && f.Anonymous && (yamlTag != "" || !isInline):
+						return fmt.Errorf("at %s: %w", path, ErrYAMLInlineOpt)
+					case isExported && !f.Anonymous && isInline:
+						return fmt.Errorf("at %s: %w", path, ErrYAMLInlineNonAnon)
+					case yamlTag == "" && isExported && !f.Anonymous:
+						return fmt.Errorf("at %s: %w", path, ErrTypeMissingYAMLTag)
+					case yamlTag != "" && !isExported:
+						return fmt.Errorf("at %s: %w", path, ErrYAMLTagOnUnexported)
+					}
 				}
 
 				if err := validateEnvField(f); err != nil {
 					return fmt.Errorf("at %s: %w", path, err)
 				}
 
-				if !isExported {
+				if !isExported || yamlIgnored {
 					continue
 				}
 				exportedFields++
@@ -862,7 +860,6 @@ func ValidateType[T any]() error {
 						path, yamlTag, previous, ErrYAMLTagRedefined)
 				}
 				yamlTags[yamlTag] = path
-
 				err := traverse(path, f.Type)
 				if err != nil {
 					return err
