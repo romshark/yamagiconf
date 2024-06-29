@@ -1118,6 +1118,67 @@ func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
+func TestErrYAMLMergeKey(t *testing.T) {
+	t.Run("in_struct", func(t *testing.T) {
+		type Server struct {
+			Host string `yaml:"host"`
+			Port uint16 `yaml:"port"`
+		}
+		type TestConfig struct {
+			ServerDefault  Server `yaml:"server-default"`
+			ServerFallback Server `yaml:"server-fallback"`
+		}
+		var c TestConfig
+		err := yamagiconf.Load[TestConfig](`
+server-default: &default
+  host: default.server
+  port: 12345
+server-fallback:
+  port: 54321
+  <<: *default
+`, &c)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
+		require.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+	})
+
+	t.Run("in_map", func(t *testing.T) {
+		type TestConfig struct {
+			Map1 map[string]string `yaml:"map1"`
+			Map2 map[string]string `yaml:"map2"`
+		}
+		var c TestConfig
+		err := yamagiconf.Load[TestConfig](`
+map1: &map1
+  foo: bar
+  bazz: fazz
+map2:
+  <<: *map1
+  mar: tar
+`, &c)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
+		require.Equal(t, `at 6:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+	})
+
+	t.Run("map_multi_merge", func(t *testing.T) {
+		type TestConfig struct {
+			Map1 map[string]string `yaml:"map1"`
+			Map2 map[string]string `yaml:"map2"`
+			Map3 map[string]string `yaml:"map3"`
+		}
+		var c TestConfig
+		err := yamagiconf.Load[TestConfig](`
+map1: &map1
+  foo: bar
+map2: &map2
+  bazz: fazz
+map3:
+  <<: [*map1,*map2]
+`, &c)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
+		require.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+	})
+}
+
 func TestValidateTypeErrTypeEnvTagOnUnexported(t *testing.T) {
 	type TestConfig struct {
 		Ok string `yaml:"okay"`
@@ -1484,10 +1545,20 @@ foo: 1
 		type TestConfig struct {
 			Boolean bool `yaml:"boolean"`
 		}
-		_, err := LoadSrc[TestConfig]("\nboolean: yes")
+		_, err := LoadSrc[TestConfig]("boolean: yes")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
-		require.True(t, strings.HasPrefix(err.Error(),
-			`at 2:10: "boolean" (TestConfig.Boolean): must be either false or true`))
+		require.Equal(t, `at 1:10: "boolean" (TestConfig.Boolean): `+
+			yamagiconf.ErrYAMLBadBoolLiteral.Error(), err.Error())
+	})
+
+	t.Run("unsupported_boolean_literal_in_array", func(t *testing.T) {
+		type TestConfig struct {
+			Booleans []bool `yaml:"booleans"`
+		}
+		_, err := LoadSrc[TestConfig]("booleans:\n  - false\n  - no")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
+		require.Equal(t, `at 3:5: "booleans" (TestConfig.Booleans[1]): `+
+			yamagiconf.ErrYAMLBadBoolLiteral.Error(), err.Error())
 	})
 
 	t.Run("unsupported_null_literal_tilde", func(t *testing.T) {

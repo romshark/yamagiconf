@@ -58,6 +58,7 @@ an error annotated with line and column in the YAML file if necessary.
 	the [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids empty array items ([see rationale](#why-are-empty-array-items-forbidden)).
 	- 🚫 Forbids multi-document files.
+	- 🚫 Forbids [YAML merge keys](https://yaml.org/type/merge.html).
 - Features:
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
 	then its validation method will be called using reflection

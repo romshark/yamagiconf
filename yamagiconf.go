@@ -52,6 +52,7 @@ var (
 		"any other variants of null are not supported")
 	ErrYAMLNonStrOnTextUnmarsh = errors.New("value must be a string because the " +
 		"target type implements encoding.TextUnmarshaler")
+	ErrYAMLMergeKey = errors.New("avoid using YAML merge keys")
 
 	// ErrYAMLEmptyArrayItem applies to both Go arrays and slices even though
 	// an empty item would be parsed correctly as zero-value in case of Go arrays
@@ -729,6 +730,12 @@ func validateYAMLValues(
 			if contentNode == nil {
 				return fmt.Errorf("at %s (as %q): %w",
 					path, yamlTag, ErrYAMLMissingConfig)
+			}
+			for _, n := range contentNode.Content {
+				if n.Tag == "!!merge" {
+					return fmt.Errorf("at %d:%d: %w",
+						n.Line, n.Column, ErrYAMLMergeKey)
+				}
 			}
 			err := validateYAMLValues(anchors, yamlTag, path, f.Type, contentNode)
 			if err != nil {
