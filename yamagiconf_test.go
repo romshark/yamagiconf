@@ -1675,7 +1675,7 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidateTagViolation)
+		require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
 		require.Equal(t,
 			`at 3:17: "required-str" violates validation rule: "required"`,
 			err.Error())
@@ -1800,7 +1800,7 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidateTagViolation)
+		require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
 		require.Equal(t,
 			`at TestConfig.Container.NoYAMLStr: violates validation rule: "required"`,
 			err.Error())

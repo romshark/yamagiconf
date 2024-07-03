@@ -28,9 +28,9 @@ import (
 // Errors in the Go target type begin with ErrType...
 // Errors in the env variables begin with ErrEnv...
 var (
-	ErrConfigNil            = errors.New("cannot load into nil config")
-	ErrValidation           = errors.New("validation")
-	ErrValidateTagViolation = errors.New("violates validation rule")
+	ErrConfigNil     = errors.New("cannot load into nil config")
+	ErrValidation    = errors.New("validation")
+	ErrValidationTag = errors.New("violates validation rule")
 
 	ErrYAMLMultidoc        = errors.New("multi-document YAML files are not supported")
 	ErrYAMLEmptyFile       = errors.New("empty file")
@@ -190,10 +190,10 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 				// Ignored field, use Go field name instead of tag.
 				return fmt.Errorf("at %s: %w: %q",
-					err.StructNamespace(), ErrValidateTagViolation, err.Tag())
+					err.StructNamespace(), ErrValidationTag, err.Tag())
 			}
 			return fmt.Errorf("at %d:%d: %q %w: %q",
-				line, column, yamlTag, ErrValidateTagViolation, err.Tag())
+				line, column, yamlTag, ErrValidationTag, err.Tag())
 		}
 		return err
 	}
@@ -214,7 +214,7 @@ func Validate[T any](t T) error {
 	if err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			return fmt.Errorf("at %s: %w: %q",
-				errs[0].StructNamespace(), ErrValidateTagViolation, errs[0].Tag())
+				errs[0].StructNamespace(), ErrValidationTag, errs[0].Tag())
 		}
 		return err
 	}
