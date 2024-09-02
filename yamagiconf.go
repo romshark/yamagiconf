@@ -873,12 +873,16 @@ func ValidateType[T any]() error {
 				}
 				exportedFields++
 
-				if previous, ok := yamlTags[yamlTag]; ok {
-					return fmt.Errorf(
-						"at %s: yaml tag %q previously defined on field %s: %w",
-						path, yamlTag, previous, ErrYAMLTagRedefined)
+				// Avoid checking tag redifinition for embedded fields.
+				// For embedded fields yamlTag will always be == "".
+				if yamlTag != "" {
+					if previous, ok := yamlTags[yamlTag]; ok {
+						return fmt.Errorf(
+							"at %s: yaml tag %q previously defined on field %s: %w",
+							path, yamlTag, previous, ErrYAMLTagRedefined)
+					}
+					yamlTags[yamlTag] = path
 				}
-				yamlTags[yamlTag] = path
 				err := traverse(path, f.Type)
 				if err != nil {
 					return err
