@@ -2029,6 +2029,80 @@ container:
 	})
 }
 
+type EnvVarStructPointer struct {
+	Named *EnvVarStructPointerNamed `yaml:"named"`
+	Anon  *struct {
+		X string `yaml:"x" env:"XVAR"`
+	} `yaml:"anon"`
+	EnvVarStructPointerEmbedded     `yaml:",inline"`
+	*EnvVarStructPointerEmbeddedPtr `yaml:",inline"`
+}
+
+type EnvVarStructPointerNamed struct {
+	X string `yaml:"x" env:"XVAR"`
+}
+
+type EnvVarStructPointerEmbedded struct {
+	Embedded *EnvVarStructPointerNamed `yaml:"embedded"`
+}
+
+type EnvVarStructPointerEmbeddedPtr struct {
+	EmbeddedPtr *EnvVarStructPointerNamed `yaml:"embedded_ptr"`
+}
+
+func TestLoadEnvStructPointer(t *testing.T) {
+	f := func(input string) (c EnvVarStructPointer) {
+		err := yamagiconf.Load(input, &c)
+		require.NoError(t, err)
+		return c
+	}
+
+	// Zero value
+	a := f(`
+named:
+anon:
+embedded:
+embedded_ptr:
+`)
+	require.Nil(t, a.Named)
+	require.Nil(t, a.Anon)
+	require.Nil(t, a.Embedded)
+	require.Nil(t, a.EmbeddedPtr)
+
+	// Without env var
+	a = f(`
+named:
+  x: initial
+anon:
+  x: initial
+embedded:
+  x: initial
+embedded_ptr:
+  x: initial
+`)
+	require.Equal(t, "initial", a.Named.X)
+	require.Equal(t, "initial", a.Anon.X)
+	require.Equal(t, "initial", a.Embedded.X)
+	require.Equal(t, "initial", a.EmbeddedPtr.X)
+
+	// With env var set
+	t.Setenv("XVAR", "replaced")
+	a = f(`
+named:
+  x: initial
+anon:
+  x: initial
+embedded:
+  x: initial
+embedded_ptr:
+  x: initial
+`)
+	require.Equal(t, "replaced", a.Named.X)
+	require.Equal(t, "replaced", a.Anon.X)
+	require.Equal(t, "replaced", a.Embedded.X)
+	require.Equal(t, "replaced", a.EmbeddedPtr.X)
+}
+
 func TestLoadEnvVar(t *testing.T) {
 	type Foo struct {
 		Foo string `yaml:"foo" env:"FOO"`

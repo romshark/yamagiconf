@@ -397,17 +397,22 @@ func newDecoderYAML[S string | []byte](s S) *yaml.Decoder {
 func unmarshalEnv(path, envVar string, v reflect.Value) error {
 	tp := v.Type()
 
-	if tp.Kind() == reflect.Pointer {
+	textUnmarshaler := asIface[encoding.TextUnmarshaler](v, true)
+	if isPtr := tp.Kind() == reflect.Pointer; isPtr &&
+		tp.Elem().Kind() == reflect.Struct && !v.IsNil() && textUnmarshaler == nil {
+		// Pointer to a struct type that doesn't implement encoding.TextUnmarshaler
+		v, tp = v.Elem(), tp.Elem()
+	} else if isPtr {
 		env, ok := os.LookupEnv(envVar)
 		if ok {
 			if env == "null" {
 				v.Set(reflect.Zero(v.Type()))
 				return nil
-			} else if vi := asIface[encoding.TextUnmarshaler](v, true); vi != nil {
-				if err := vi.UnmarshalText([]byte(env)); err != nil {
+			} else if textUnmarshaler != nil {
+				if err := textUnmarshaler.UnmarshalText([]byte(env)); err != nil {
 					return errUnmarshalEnv(path, envVar, tp, err)
 				}
-				v.Set(reflect.ValueOf(vi))
+				v.Set(reflect.ValueOf(textUnmarshaler))
 				return nil
 			}
 			newValue := reflect.New(tp.Elem())
@@ -417,12 +422,12 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		}
 	}
 
-	if vi := asIface[encoding.TextUnmarshaler](v, true); vi != nil {
+	if textUnmarshaler != nil {
 		env, ok := os.LookupEnv(envVar)
 		if !ok {
 			return nil
 		}
-		if err := vi.UnmarshalText([]byte(env)); err != nil {
+		if err := textUnmarshaler.UnmarshalText([]byte(env)); err != nil {
 			return errUnmarshalEnv(path, envVar, tp, err)
 		}
 	}
