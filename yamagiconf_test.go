@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/romshark/yamagiconf"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
