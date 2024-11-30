@@ -873,10 +873,12 @@ func ValidateType[T any]() error {
 					return fmt.Errorf("at %s: %w", path, err)
 				}
 
-				if !isExported || yamlIgnored {
+				if isExported {
+					exportedFields++
+				}
+				if yamlIgnored {
 					continue
 				}
-				exportedFields++
 
 				// Avoid checking tag redifinition for embedded fields.
 				// For embedded fields yamlTag will always be == "".
