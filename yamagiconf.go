@@ -873,9 +873,11 @@ func ValidateType[T any]() error {
 					return fmt.Errorf("at %s: %w", path, err)
 				}
 
-				if isExported {
-					exportedFields++
+				hasEnvTag := f.Tag.Get("env") != ""
+				if !isExported || (yamlIgnored && !hasEnvTag) {
+					continue
 				}
+				exportedFields++
 				if yamlIgnored {
 					continue
 				}
