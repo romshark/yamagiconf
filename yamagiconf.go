@@ -222,6 +222,9 @@ func Validate[T any](t T) error {
 	return invokeValidateRecursively(typeName, reflect.ValueOf(t), nil)
 }
 
+// Validator defines the interface yamagiconf supports for custom validation code.
+// Any implementation of this interface will be found (recursively) and the Validate
+// method will be invoked.
 type Validator interface{ Validate() error }
 
 // asIface[I any] returns nil if v doesn't implement the Validator interface
