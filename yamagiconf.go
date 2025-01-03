@@ -712,6 +712,16 @@ func validateYAMLValues(
 			node.Line, node.Column, ErrYAMLNonStrOnTextUnmarsh, tp.String())
 	}
 
+	if tp.Kind() == reflect.Pointer {
+		if node != nil && node.Tag == "!!null" {
+			// Expected a pointer and received "null", all good.
+			return nil
+		}
+		for tp.Kind() == reflect.Pointer {
+			tp = tp.Elem()
+		}
+	}
+
 	switch tp.Kind() {
 	case reflect.Struct:
 		if implementsInterface[encoding.TextUnmarshaler](tp) ||

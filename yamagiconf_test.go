@@ -41,7 +41,7 @@ func TestLoadFile(t *testing.T) {
 		MapInt16Int16     map[int16]int16       `yaml:"map-int16-int16"`
 		MapInt16Int16Null map[int16]int16       `yaml:"map-int16-int16-null"`
 		MapContainer      map[string]Container  `yaml:"map-string-container"`
-		MapContainerNull  map[string]*Container `yaml:"map-string-ptr-container"`
+		MapContainerPtr   map[string]*Container `yaml:"map-string-ptr-container"`
 		SliceStr          []string              `yaml:"slice-str"`
 		SliceInt64        []int64               `yaml:"slice-int64"`
 		SliceInt64Null    []int64               `yaml:"slice-int64-null"`
@@ -95,6 +95,7 @@ map-string-ptr-container:
   foo:
     any-string: foo
   bar: null
+  bazz:
 slice-str:
   - 1
   - 2
@@ -145,9 +146,10 @@ enabled: true`), 0o664)
 		"bar": {AnyString: "bar"},
 	}, c.MapContainer)
 	require.Equal(t, map[string]*Container{
-		"foo": {AnyString: "foo"},
-		"bar": nil,
-	}, c.MapContainerNull)
+		"foo":  {AnyString: "foo"},
+		"bar":  nil,
+		"bazz": nil,
+	}, c.MapContainerPtr)
 	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
 	require.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
 	require.Nil(t, c.SliceInt64Null)
@@ -1332,11 +1334,101 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		OK      string `yaml:"ok,omitempty"`
 		Missing string `yaml:"missing,omitempty"`
 	}
-	_, err := LoadSrc[TestConfig]("ok: 'OK'")
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-	require.Equal(t,
-		`at TestConfig.Missing (as "missing"): missing field in config file`,
-		err.Error())
+	t.Run("struct", func(t *testing.T) {
+		_, err := LoadSrc[TestConfig]("ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at TestConfig.Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("pointer", func(t *testing.T) {
+		type T struct {
+			TestConfig *TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.TestConfig.Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("map", func(t *testing.T) {
+		type T struct {
+			M map[string]TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M["x"].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("map_pointer", func(t *testing.T) {
+		type T struct {
+			M map[string]*TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M["x"].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("slice", func(t *testing.T) {
+		type T struct {
+			M []TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M[1].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("slice_pointer", func(t *testing.T) {
+		type T struct {
+			M []*TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M[1].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("array", func(t *testing.T) {
+		type T struct {
+			M [2]TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M[1].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("array_pointer", func(t *testing.T) {
+		type T struct {
+			M [2]*TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M[1].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("slice2D", func(t *testing.T) {
+		type T struct {
+			M [][]TestConfig `yaml:"config"`
+		}
+		_, err := LoadSrc[T]("config:\n  - - ok: 'OK'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		require.Equal(t,
+			`at T.M[0][0].Missing (as "missing"): missing field in config file`,
+			err.Error())
+	})
 }
 
 func TestLoadNullOnNonPointer(t *testing.T) {
