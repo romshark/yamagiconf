@@ -4,10 +4,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Go 1.22.8
+      - name: Install Go 1.23.5
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22.8"
+          go-version: "1.23.5"
           check-latest: true
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,7 +16,7 @@ jobs:
       - name: Calculate coverage
         run: go test -v -covermode=count -coverprofile=coverage.out
       - name: Convert coverage.out to coverage.lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.9
+        uses: jandelgado/gcov2lcov-action@v1.1.1
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
