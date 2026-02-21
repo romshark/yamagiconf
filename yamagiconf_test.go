@@ -1132,7 +1132,7 @@ func TestErrYAMLMergeKey(t *testing.T) {
 			ServerFallback Server `yaml:"server-fallback"`
 		}
 		var c TestConfig
-		err := yamagiconf.Load[TestConfig](`
+		err := yamagiconf.Load(`
 server-default: &default
   host: default.server
   port: 12345
@@ -1150,7 +1150,7 @@ server-fallback:
 			Map2 map[string]string `yaml:"map2"`
 		}
 		var c TestConfig
-		err := yamagiconf.Load[TestConfig](`
+		err := yamagiconf.Load(`
 map1: &map1
   foo: bar
   bazz: fazz
@@ -1169,7 +1169,7 @@ map2:
 			Map3 map[string]string `yaml:"map3"`
 		}
 		var c TestConfig
-		err := yamagiconf.Load[TestConfig](`
+		err := yamagiconf.Load(`
 map1: &map1
   foo: bar
 map2: &map2
@@ -1903,6 +1903,25 @@ container:
 		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at TestConfig.Container.NoYAMLStr:`, "at TestConfig.Container.Str:"))
 	})
+}
+
+// customURL is a TextUnmarshaler struct used in TestValidationTagIncompatibleFieldType.
+type customURL struct{ V string }
+
+func (u *customURL) UnmarshalText(t []byte) error { u.V = string(t); return nil }
+
+// TestValidationTagIncompatibleFieldType tests that an incompatible validate tag
+// (e.g. "url" on a custom struct type) returns an error instead of panicking.
+// See: https://github.com/romshark/yamagiconf/issues/1
+func TestValidationTagIncompatibleFieldType(t *testing.T) {
+	type Config struct {
+		Host customURL `yaml:"host" validate:"url"`
+	}
+	_, err := LoadSrc[Config](`host: https://localhost:8080/path`)
+	require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
+
+	validateErr := yamagiconf.Validate(Config{})
+	require.ErrorIs(t, validateErr, yamagiconf.ErrValidationTag)
 }
 
 type TestConfWithValid struct {

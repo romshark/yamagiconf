@@ -176,9 +176,9 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		return err
 	}
 
-	err = validator.New(
+	err = runValidatorStruct(validator.New(
 		validator.WithRequiredStructEnabled(),
-	).Struct(config)
+	), config)
 	if err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			err := errs[0]
@@ -210,7 +210,7 @@ func Validate[T any](t T) error {
 	if err := ValidateType[T](); err != nil {
 		return err
 	}
-	err := validator.New(validator.WithRequiredStructEnabled()).Struct(t)
+	err := runValidatorStruct(validator.New(validator.WithRequiredStructEnabled()), t)
 	if err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			return fmt.Errorf("at %s: %w: %q",
@@ -226,6 +226,18 @@ func Validate[T any](t T) error {
 // Any implementation of this interface will be found (recursively) and the Validate
 // method will be invoked.
 type Validator interface{ Validate() error }
+
+// runValidatorStruct wraps v.Struct to recover from panics emitted by
+// go-playground/validator when a validate tag is incompatible with the
+// field type (e.g. validate:"url" on a custom struct).
+func runValidatorStruct(v *validator.Validate, s any) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%w: %v", ErrValidationTag, r)
+		}
+	}()
+	return v.Struct(s)
+}
 
 // asIface[I any] returns nil if v doesn't implement the Validator interface
 // neither as a copy- nor as a pointer receiver.
