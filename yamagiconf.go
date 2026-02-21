@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // All possible errors.
@@ -121,23 +121,16 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		return err
 	}
 
-	dec := newDecoderYAML(yamlSource)
-	dec.KnownFields(true)
-	err := dec.Decode(config)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
-	}
-
 	var rootNode yaml.Node
 	{
 		dec := newDecoderYAML(yamlSource)
 		if err := dec.Decode(&rootNode); err != nil {
-			return fmt.Errorf("decoding yaml structure: %w", err)
+			return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
 		}
 
 		// Check if multi-doc
 		var n yaml.Node
-		if err = dec.Decode(&n); err == nil {
+		if err := dec.Decode(&n); err == nil {
 			return fmt.Errorf("at %d:%d: %w", n.Line, n.Column, ErrYAMLMultidoc)
 		} else if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("%w: %w", ErrYAMLMultidoc, err)
@@ -149,7 +142,7 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 	configTypeName := getConfigTypeName(configType)
 
 	anchors := make(map[string]*anchor)
-	err = validateYAMLValues(
+	err := validateYAMLValues(
 		anchors, "", configTypeName, configType, rootNode.Content[0],
 	)
 	if err != nil {
@@ -161,6 +154,14 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		if !anchor.IsUsed {
 			return fmt.Errorf("at %d:%d: anchor %q: %w",
 				anchor.Line, anchor.Column, anchor.Anchor, ErrYAMLAnchorUnused)
+		}
+	}
+
+	{
+		dec := newDecoderYAML(yamlSource)
+		dec.KnownFields(true)
+		if err := dec.Decode(config); err != nil {
+			return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
 		}
 	}
 

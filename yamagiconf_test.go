@@ -14,7 +14,7 @@ import (
 	"github.com/romshark/yamagiconf"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func LoadSrc[T any](src string) (*T, error) {
@@ -311,41 +311,31 @@ func TestLoadErrInvalidUTF8(t *testing.T) {
 	t.Run("control_char_in_string", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("str: abc\u0000defg")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Equal(t,
-			`malformed YAML: yaml: control characters are not allowed`,
-			err.Error())
+		require.Contains(t, err.Error(), "control characters are not allowed")
 	})
 
 	t.Run("control_char_in_key", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("s\u0000tr: abcdefg")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Equal(t,
-			`malformed YAML: yaml: control characters are not allowed`,
-			err.Error())
+		require.Contains(t, err.Error(), "control characters are not allowed")
 	})
 
 	t.Run("overlong_encoding_of_U+0000", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xc0\x80: not ok")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Equal(t,
-			`malformed YAML: yaml: invalid length of a UTF-8 sequence`,
-			err.Error())
+		require.Contains(t, err.Error(), "invalid length of a UTF-8 sequence")
 	})
 
 	t.Run("surrogate_half_U+D800_U+DFFF", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xed\xa0\x80: not ok")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Equal(t,
-			`malformed YAML: yaml: invalid Unicode character`,
-			err.Error())
+		require.Contains(t, err.Error(), "invalid Unicode character")
 	})
 
 	t.Run("code_point_beyond_max_unicode_value", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xef\xbf\xff: not ok")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Equal(t,
-			`malformed YAML: yaml: invalid trailing UTF-8 octet`,
-			err.Error())
+		require.Contains(t, err.Error(), "invalid trailing UTF-8 octet")
 	})
 }
 
@@ -1596,7 +1586,7 @@ func TestLoadErr(t *testing.T) {
 		// Using tabs is illegal
 		c, err := LoadSrc[TestConfig]("x:\n\ttabs: 'TABS'\n  spaces: 'SPACES'\n")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.True(t, strings.HasPrefix(err.Error(), "malformed YAML: yaml: line 2:"))
+		require.Contains(t, err.Error(), "line 2")
 		require.NotZero(t, c)
 	})
 
@@ -1630,8 +1620,9 @@ foo: 1
 :
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
-		require.Equal(t, yamagiconf.ErrYAMLMultidoc.Error()+
-			": yaml: line 4: did not find expected key", err.Error())
+		require.Contains(t, err.Error(), yamagiconf.ErrYAMLMultidoc.Error())
+		require.Contains(t, err.Error(), "line 4")
+		require.Contains(t, err.Error(), "did not find expected key")
 	})
 
 	t.Run("unsupported_boolean_literal", func(t *testing.T) {
