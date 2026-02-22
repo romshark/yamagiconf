@@ -504,6 +504,30 @@ alias: *anchor
 		_, err := LoadSrc[TestConfig](src)
 		checkErr(t, err)
 	})
+
+	t.Run("ok_empty_slice_anchor", func(t *testing.T) {
+		type TestConfig struct {
+			Base  []string `yaml:"base"`
+			Alias []string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](`
+base: &base []
+alias: *base
+`)
+		require.NoError(t, err)
+	})
+
+	t.Run("ok_empty_map_anchor", func(t *testing.T) {
+		type TestConfig struct {
+			Base  map[string]string `yaml:"base"`
+			Alias map[string]string `yaml:"alias"`
+		}
+		_, err := LoadSrc[TestConfig](`
+base: &base {}
+alias: *base
+`)
+		require.NoError(t, err)
+	})
 }
 
 func TestLoadErrMissingYAMLTag(t *testing.T) {

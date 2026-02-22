@@ -691,8 +691,9 @@ func validateYAMLValues(
 				p.Line, p.Column,
 				ErrYAMLAnchorRedefined)
 		}
-		if node.Value == "" && node.Style != yaml.DoubleQuotedStyle &&
-			node.Style != yaml.SingleQuotedStyle && len(node.Content) < 1 {
+		if node.Kind == yaml.ScalarNode && node.Value == "" &&
+			node.Style != yaml.DoubleQuotedStyle &&
+			node.Style != yaml.SingleQuotedStyle {
 			return fmt.Errorf("at %d:%d: anchor %q: %w",
 				node.Line, node.Column, node.Anchor, ErrYAMLAnchorNoValue)
 		}
