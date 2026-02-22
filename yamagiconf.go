@@ -473,6 +473,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		if err := textUnmarshaler.UnmarshalText([]byte(env)); err != nil {
 			return errUnmarshalEnv(path, envVar, tp, err)
 		}
+		return nil
 	}
 
 	if tp == typeTimeDuration {

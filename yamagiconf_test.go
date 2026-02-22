@@ -2721,6 +2721,32 @@ ptr-duration-null: null
 	require.Zero(t, c.NoYAMLStr)
 }
 
+// primitiveTextUnmarshaler is a string-kinded type that implements
+// encoding.TextUnmarshaler. Its UnmarshalText prefixes the value so we can
+// tell whether it was called.
+type primitiveTextUnmarshaler string
+
+var _ encoding.TextUnmarshaler = new(primitiveTextUnmarshaler)
+
+func (p *primitiveTextUnmarshaler) UnmarshalText(text []byte) error {
+	*p = primitiveTextUnmarshaler("transformed:" + string(text))
+	return nil
+}
+
+// TestLoadEnvVarPrimitiveTextUnmarshaler tests that an env var applied to a
+// named string type implementing encoding.TextUnmarshaler goes through
+// UnmarshalText rather than being set as a raw string.
+func TestLoadEnvVarPrimitiveTextUnmarshaler(t *testing.T) {
+	type TestConfig struct {
+		Value primitiveTextUnmarshaler `yaml:"value" env:"PRIM_TEXT_UNMARSH"`
+	}
+	t.Setenv("PRIM_TEXT_UNMARSH", "raw")
+	c, err := LoadSrc[TestConfig]("value: yaml_val")
+	require.NoError(t, err)
+	// UnmarshalText should have been called, producing "transformed:raw".
+	require.Equal(t, primitiveTextUnmarshaler("transformed:raw"), c.Value)
+}
+
 func TestLoadErrInvalidEnvVar(t *testing.T) {
 	t.Run("bool", func(t *testing.T) {
 		type TestConfig struct {
