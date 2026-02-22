@@ -1233,6 +1233,22 @@ map2:
 		require.Equal(t, `at 6:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
 	})
 
+	t.Run("in_nested_map_value", func(t *testing.T) {
+		type TestConfig struct {
+			Base map[string]string            `yaml:"base"`
+			Outer map[string]map[string]string `yaml:"outer"`
+		}
+		var c TestConfig
+		err := yamagiconf.Load(`
+base: &base
+  a: x
+outer:
+  key:
+    <<: *base
+`, &c)
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
+	})
+
 	t.Run("map_multi_merge", func(t *testing.T) {
 		type TestConfig struct {
 			Map1 map[string]string `yaml:"map1"`

@@ -770,6 +770,10 @@ func validateYAMLValues(
 	case reflect.Map:
 		tpKey, tpVal := tp.Key(), tp.Elem()
 		for i := 0; i < len(node.Content); i += 2 {
+			if node.Content[i].Tag == "!!merge" {
+				return fmt.Errorf("at %d:%d: %w",
+					node.Content[i].Line, node.Content[i].Column, ErrYAMLMergeKey)
+			}
 			path := fmt.Sprintf("%s[%q]", path, node.Content[i].Value)
 			// Validate key
 			err := validateYAMLValues(anchors, yamlTag, path, tpKey, node.Content[i])
