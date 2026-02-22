@@ -701,6 +701,7 @@ func validateYAMLValues(
 	}
 	if node.Alias != nil {
 		anchors[node.Alias.Anchor].IsUsed = true
+		node = node.Alias
 	}
 
 	if implementsInterface[encoding.TextUnmarshaler](tp) &&

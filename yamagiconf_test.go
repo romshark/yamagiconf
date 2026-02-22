@@ -3158,6 +3158,41 @@ func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
 	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
+// TestTextUnmarshalerScalarAlias tests that a scalar alias to a TextUnmarshaler
+// field passes validation (the alias target is a string). The YAML library
+// itself cannot construct a TextUnmarshaler from an alias, so it returns
+// ErrYAMLMalformed at decode time.
+func TestTextUnmarshalerScalarAlias(t *testing.T) {
+	var v struct {
+		Base  string          `yaml:"base"`
+		Alias TextUnmarshaler `yaml:"alias"`
+	}
+	err := yamagiconf.Load("base: &a text_value\nalias: *a", &v)
+	require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
+}
+
+// TestStructAlias tests that a struct-valued field accessed via alias is accepted.
+func TestStructAlias(t *testing.T) {
+	type Server struct {
+		Host string `yaml:"host"`
+		Port uint16 `yaml:"port"`
+	}
+	type Config struct {
+		Default  Server `yaml:"default"`
+		Fallback Server `yaml:"fallback"`
+	}
+	var c Config
+	err := yamagiconf.Load(`
+default: &default
+  host: localhost
+  port: 8080
+fallback: *default
+`, &c)
+	require.NoError(t, err)
+	require.Equal(t, "localhost", c.Fallback.Host)
+	require.Equal(t, uint16(8080), c.Fallback.Port)
+}
+
 // TestZeroValue tests whether no value in YAML results in zero Go value.
 func TestZeroValue(t *testing.T) {
 	type NoValue struct {
