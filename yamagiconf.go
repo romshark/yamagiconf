@@ -82,12 +82,35 @@ var (
 	ErrEnvInvalidVar = errors.New("invalid env var")
 )
 
+// Option is a functional option for [Load] and [LoadFile].
+type Option func(*options)
+
+type options struct {
+	strictPresence bool
+}
+
+// WithStrictPresence enables strict field-presence checking:
+// every field defined in the Go struct type must be present in the YAML source.
+// By default yamagiconf does not require all fields to be present,
+// allowing fields to be omitted and left at their zero value.
+func WithStrictPresence() Option {
+	return func(o *options) { o.strictPresence = true }
+}
+
+func applyOptions(opts []Option) options {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
+}
+
 // LoadFile reads and validates the configuration of type T from a YAML file.
 // Will return an error if:
 //   - ValidateType returns an error for T.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
-//   - the yaml file is missing a field specified by T.
+//   - [WithStrictPresence] is set and the yaml file is missing a field specified by T.
 //   - the yaml file contains values that don't pass validation.
 //   - the yaml file contains boolean literals other than `true` and `false`.
 //   - the yaml file contains null values other than `null` (`~`, etc.).
@@ -98,7 +121,7 @@ var (
 //   - the yaml file contains any anchors with implicit null value (no value).
 //   - the yaml file assigns non-string values to Go types implementing the
 //     encoding.TextUnmarshaler interface.
-func LoadFile[T any](yamlFilePath string, config *T) error {
+func LoadFile[T any](yamlFilePath string, config *T, opts ...Option) error {
 	if config == nil {
 		return ErrConfigNil
 	}
@@ -107,12 +130,12 @@ func LoadFile[T any](yamlFilePath string, config *T) error {
 	if err != nil {
 		return fmt.Errorf("reading file %q: %w", yamlFilePath, err)
 	}
-	return Load(yamlSrcBytes, config)
+	return Load(yamlSrcBytes, config, opts...)
 }
 
 // Load reads and validates the configuration of type T from yamlSource.
 // Load behaves similar to LoadFile.
-func Load[T any, S string | []byte](yamlSource S, config *T) error {
+func Load[T any, S string | []byte](yamlSource S, config *T, opts ...Option) error {
 	if config == nil {
 		return ErrConfigNil
 	}
@@ -144,9 +167,10 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 
 	configTypeName := getConfigTypeName(configType)
 
+	o := applyOptions(opts)
 	anchors := make(map[string]*anchor)
 	err := validateYAMLValues(
-		anchors, "", configTypeName, configType, rootNode.Content[0],
+		o, anchors, "", configTypeName, configType, rootNode.Content[0],
 	)
 	if err != nil {
 		return err
@@ -671,7 +695,7 @@ type anchor struct {
 // validateYAMLValues returns an error if the yaml model contains illegal values
 // or is missing values specified by T. Assumes that tp has already been validated.
 func validateYAMLValues(
-	anchors map[string]*anchor, yamlTag, path string, tp reflect.Type, node *yaml.Node,
+	opts options, anchors map[string]*anchor, yamlTag, path string, tp reflect.Type, node *yaml.Node,
 ) error {
 	if err := validateValue(tp, node); err != nil {
 		if yamlTag != "" {
@@ -738,8 +762,11 @@ func validateYAMLValues(
 				contentNode = findContentNodeByTag(node, yamlTag)
 			}
 			if contentNode == nil {
-				return fmt.Errorf("at %s (as %q): %w",
-					path, yamlTag, ErrYAMLMissingConfig)
+				if opts.strictPresence {
+					return fmt.Errorf("at %s (as %q): %w",
+						path, yamlTag, ErrYAMLMissingConfig)
+				}
+				continue
 			}
 			for _, n := range contentNode.Content {
 				if n.Tag == "!!merge" {
@@ -747,7 +774,7 @@ func validateYAMLValues(
 						n.Line, n.Column, ErrYAMLMergeKey)
 				}
 			}
-			err := validateYAMLValues(anchors, yamlTag, path, f.Type, contentNode)
+			err := validateYAMLValues(opts, anchors, yamlTag, path, f.Type, contentNode)
 			if err != nil {
 				return err
 			}
@@ -762,7 +789,7 @@ func validateYAMLValues(
 					node.Line, node.Column, yamlTag, path, ErrYAMLEmptyArrayItem)
 			}
 			path := fmt.Sprintf("%s[%d]", path, index)
-			if err := validateYAMLValues(anchors, yamlTag, path, tp, node); err != nil {
+			if err := validateYAMLValues(opts, anchors, yamlTag, path, tp, node); err != nil {
 				return err
 			}
 		}
@@ -771,12 +798,12 @@ func validateYAMLValues(
 		for i := 0; i < len(node.Content); i += 2 {
 			path := fmt.Sprintf("%s[%q]", path, node.Content[i].Value)
 			// Validate key
-			err := validateYAMLValues(anchors, yamlTag, path, tpKey, node.Content[i])
+			err := validateYAMLValues(opts, anchors, yamlTag, path, tpKey, node.Content[i])
 			if err != nil {
 				return err
 			}
 			// Validate value
-			err = validateYAMLValues(anchors, yamlTag, path, tpVal, node.Content[i+1])
+			err = validateYAMLValues(opts, anchors, yamlTag, path, tpVal, node.Content[i+1])
 			if err != nil {
 				return err
 			}

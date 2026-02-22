@@ -25,6 +25,14 @@ func LoadSrc[T any](src string) (*T, error) {
 	return &c, nil
 }
 
+func LoadSrcStrict[T any](src string) (*T, error) {
+	var c T
+	if err := yamagiconf.Load(src, &c, yamagiconf.WithStrictPresence()); err != nil {
+		return &c, err
+	}
+	return &c, nil
+}
+
 func TestLoadFile(t *testing.T) {
 	type Container struct {
 		AnyString string `yaml:"any-string"`
@@ -1406,7 +1414,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		Missing string `yaml:"missing,omitempty"`
 	}
 	t.Run("struct", func(t *testing.T) {
-		_, err := LoadSrc[TestConfig]("ok: 'OK'")
+		_, err := LoadSrcStrict[TestConfig]("ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at TestConfig.Missing (as "missing"): missing field in config file`,
@@ -1417,7 +1425,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			TestConfig *TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.TestConfig.Missing (as "missing"): missing field in config file`,
@@ -1428,7 +1436,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M map[string]TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  x:\n    ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M["x"].Missing (as "missing"): missing field in config file`,
@@ -1439,7 +1447,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M map[string]*TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  x:\n    ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M["x"].Missing (as "missing"): missing field in config file`,
@@ -1450,7 +1458,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M []TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
@@ -1461,7 +1469,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M []*TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
@@ -1472,7 +1480,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M [2]TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
@@ -1483,7 +1491,7 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M [2]*TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
@@ -1494,11 +1502,37 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		type T struct {
 			M [][]TestConfig `yaml:"config"`
 		}
-		_, err := LoadSrc[T]("config:\n  - - ok: 'OK'")
+		_, err := LoadSrcStrict[T]("config:\n  - - ok: 'OK'")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
 		require.Equal(t,
 			`at T.M[0][0].Missing (as "missing"): missing field in config file`,
 			err.Error())
+	})
+}
+
+func TestLoadWithStrictPresence(t *testing.T) {
+	type Config struct {
+		Present string `yaml:"present"`
+		Missing string `yaml:"missing"`
+	}
+
+	t.Run("default_allows_missing", func(t *testing.T) {
+		c, err := LoadSrc[Config]("present: 'hello'")
+		require.NoError(t, err)
+		require.Equal(t, "hello", c.Present)
+		require.Equal(t, "", c.Missing) // zero value
+	})
+
+	t.Run("strict_errors_on_missing", func(t *testing.T) {
+		_, err := LoadSrcStrict[Config]("present: 'hello'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+	})
+
+	t.Run("strict_ok_when_all_present", func(t *testing.T) {
+		c, err := LoadSrcStrict[Config]("present: 'hello'\nmissing: 'world'")
+		require.NoError(t, err)
+		require.Equal(t, "hello", c.Present)
+		require.Equal(t, "world", c.Missing)
 	})
 }
 
