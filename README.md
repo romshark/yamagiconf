@@ -1,10 +1,10 @@
 ![yamagiconf](https://github.com/romshark/yamagiconf/assets/9574743/9d4f5b77-a461-47b2-8f6f-65194755b4f1)
 
-<a href="https://pkg.go.dev/github.com/romshark/yamagiconf/v2">
-    <img src="https://godoc.org/github.com/romshark/yamagiconf/v2?status.svg" alt="GoDoc">
+<a href="https://pkg.go.dev/github.com/romshark/yamagiconf">
+    <img src="https://godoc.org/github.com/romshark/yamagiconf?status.svg" alt="GoDoc">
 </a>
-<a href="https://goreportcard.com/report/github.com/romshark/yamagiconf/v2">
-    <img src="https://goreportcard.com/badge/github.com/romshark/yamagiconf/v2" alt="GoReportCard">
+<a href="https://goreportcard.com/report/github.com/romshark/yamagiconf">
+    <img src="https://goreportcard.com/badge/github.com/romshark/yamagiconf" alt="GoReportCard">
 </a>
 <a href='https://coveralls.io/github/romshark/yamagiconf?branch=main'>
     <img src='https://coveralls.io/repos/github/romshark/yamagiconf/badge.svg?branch=main' alt='Coverage Status' />
