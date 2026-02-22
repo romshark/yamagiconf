@@ -164,6 +164,6 @@ array:
 
 Even though this YAML array works as expect with a Go array:
 `[4]string{"", "", "", "x"}`, parsing the same YAML into a Go slice will result in
-the empty item being ommited: `[]string{"", "", "x"}` which is counterintuitive.
+the empty item being omitted: `[]string{"", "", "x"}` which is counterintuitive.
 Therefore, yamagiconf forbids empty array items in general to keep behavior
 consistent and intuitive independent of the Go target type.
