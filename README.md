@@ -37,7 +37,7 @@ an error annotated with line and column in the YAML file if necessary.
 	  Allows only floats, ints, strings, bool and types that implement the
 	  [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids the use of `env` on primitive fields implementing
-	the [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler) interface.
+	  the [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler) interface.
 	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
 	  [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) and/or
 	  [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler).
@@ -47,13 +47,15 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🚫 Forbids the use of `no`, `yes`, `on` and `off` for `bool`,
 	  allows only `true` and `false`.
 	- 🚫 Forbids the use of `~`, `Null` and other variations, allows only `null` for
-      nilables.
+	  nilables.
 	- 🚫 Forbids assigning `null` to non-nilables (which normally would assign zero value).
 	- 🚫 Forbids fields in the YAML file that aren't specified by the Go type.
 	- 🚫 Forbids the use of [YAML tags](https://yaml.org/spec/1.2.2/#3212-tags).
 	- 🚫 Forbids redeclaration of anchors.
 	- 🚫 Forbids unused anchors.
 	- 🚫 Forbids anchors with implicit `null` value (no value) like `foo: &bar`.
+	- ❗️ Requires all fields defined in the Go type to be present in the YAML file
+	  (unless `WithOptionalPresence()` is used).
 	- 🚫 Forbids assigning non-string values to Go types that implement
 	  the [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler)
 	  interface.
@@ -68,11 +70,11 @@ an error annotated with line and column in the YAML file if necessary.
 	  Keeps your validation logic close to your configuration type definitions.
 	- Reports errors by `line:column` when possible.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)
-	validation struct tags.
+	  validation struct tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
 	- Supports [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler)
 	  and [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler)
-	(except for the root struct type).
+	  (except for the root struct type).
 	- Supports `time.Duration`.
 	- `WithOptionalPresence()` option allows fields defined in the Go struct
 	  to be missing from the YAML source (missing fields use zero value instead

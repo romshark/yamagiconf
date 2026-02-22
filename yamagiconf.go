@@ -109,7 +109,7 @@ func applyOptions(opts []Option) options {
 // Will return an error if:
 //   - ValidateType returns an error for T.
 //   - the yaml file is empty or not found.
-//   - the yaml file doesn't contain a field specified by T.
+//   - the yaml file contains a field not specified by T.
 //   - the yaml file is missing a field specified by T
 //     (unless [WithOptionalPresence] is set).
 //   - the yaml file contains values that don't pass validation.
