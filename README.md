@@ -74,9 +74,9 @@ an error annotated with line and column in the YAML file if necessary.
 	  and [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler)
 	(except for the root struct type).
 	- Supports `time.Duration`.
-	- `WithStrictPresence()` option requires all fields defined in the Go struct
-	  to be present in the YAML source (missing fields become an error instead of
-	  zero value).
+	- `WithOptionalPresence()` option allows fields defined in the Go struct
+	  to be missing from the YAML source (missing fields use zero value instead
+	  of causing an error).
 
 ## Example
 

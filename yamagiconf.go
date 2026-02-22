@@ -86,15 +86,15 @@ var (
 type Option func(*options)
 
 type options struct {
-	strictPresence bool
+	optionalPresence bool
 }
 
-// WithStrictPresence enables strict field-presence checking:
-// every field defined in the Go struct type must be present in the YAML source.
-// By default yamagiconf does not require all fields to be present,
-// allowing fields to be omitted and left at their zero value.
-func WithStrictPresence() Option {
-	return func(o *options) { o.strictPresence = true }
+// WithOptionalPresence disables strict field-presence checking:
+// fields defined in the Go struct type that are missing from the YAML source
+// will be left at their zero value instead of causing an error.
+// By default yamagiconf requires all fields to be present.
+func WithOptionalPresence() Option {
+	return func(o *options) { o.optionalPresence = true }
 }
 
 func applyOptions(opts []Option) options {
@@ -110,7 +110,8 @@ func applyOptions(opts []Option) options {
 //   - ValidateType returns an error for T.
 //   - the yaml file is empty or not found.
 //   - the yaml file doesn't contain a field specified by T.
-//   - [WithStrictPresence] is set and the yaml file is missing a field specified by T.
+//   - the yaml file is missing a field specified by T
+//     (unless [WithOptionalPresence] is set).
 //   - the yaml file contains values that don't pass validation.
 //   - the yaml file contains boolean literals other than `true` and `false`.
 //   - the yaml file contains null values other than `null` (`~`, etc.).
@@ -765,7 +766,7 @@ func validateYAMLValues(
 				contentNode = findContentNodeByTag(node, yamlTag)
 			}
 			if contentNode == nil {
-				if opts.strictPresence {
+				if !opts.optionalPresence {
 					return fmt.Errorf("at %s (as %q): %w",
 						path, yamlTag, ErrYAMLMissingConfig)
 				}
