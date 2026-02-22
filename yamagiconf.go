@@ -74,7 +74,7 @@ var (
 	ErrTypeInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
 		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
 	ErrTypeEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
-	ErrTypeEnvTagInContainer = errors.New(
+	ErrTypeEnvTagInContainer       = errors.New(
 		"env tag behind pointer, slice, or map is not allowed")
 	ErrTypeUnsupported        = errors.New("unsupported type")
 	ErrTypeUnsupportedPtrType = errors.New("unsupported pointer type")
@@ -449,6 +449,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 		if err := textUnmarshaler.UnmarshalText([]byte(env)); err != nil {
 			return errUnmarshalEnv(path, envVar, tp, err)
 		}
+		return nil
 	}
 
 	if tp == typeTimeDuration {
