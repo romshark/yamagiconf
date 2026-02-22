@@ -96,7 +96,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/romshark/yamagiconf/v2"
+	"github.com/romshark/yamagiconf"
 )
 
 type Config struct {

@@ -11,7 +11,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/romshark/yamagiconf/v2"
+	"github.com/romshark/yamagiconf"
 
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
@@ -1235,7 +1235,7 @@ map2:
 
 	t.Run("in_nested_map_value", func(t *testing.T) {
 		type TestConfig struct {
-			Base map[string]string            `yaml:"base"`
+			Base  map[string]string            `yaml:"base"`
 			Outer map[string]map[string]string `yaml:"outer"`
 		}
 		var c TestConfig
