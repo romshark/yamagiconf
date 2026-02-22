@@ -1,4 +1,4 @@
-module github.com/romshark/yamagiconf
+module github.com/romshark/yamagiconf/v2
 
 go 1.25
 

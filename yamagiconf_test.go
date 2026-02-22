@@ -11,7 +11,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/romshark/yamagiconf"
+	"github.com/romshark/yamagiconf/v2"
 
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
