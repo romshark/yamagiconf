@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -137,7 +138,7 @@ func Load[T any, S string | []byte](yamlSource S, config *T) error {
 		}
 	}
 
-	configType := reflect.TypeOf(config).Elem()
+	configType := reflect.TypeFor[T]()
 
 	configTypeName := getConfigTypeName(configType)
 
@@ -246,7 +247,7 @@ func asIface[I any](v reflect.Value, allocateIfNecessary bool) (i I) {
 	if !v.IsValid() {
 		return i
 	}
-	ti := reflect.TypeOf((*I)(nil)).Elem()
+	ti := reflect.TypeFor[I]()
 	tp := v.Type()
 	if tp.Implements(ti) {
 		if tp.Kind() == reflect.Pointer && v.IsNil() {
@@ -275,7 +276,7 @@ func asIface[I any](v reflect.Value, allocateIfNecessary bool) (i I) {
 }
 
 func implementsInterface[I any](t reflect.Type) bool {
-	ti := reflect.TypeOf((*I)(nil)).Elem()
+	ti := reflect.TypeFor[I]()
 	if t.Implements(ti) {
 		return true
 	} else if t.Kind() != reflect.Pointer {
@@ -628,7 +629,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 	return nil
 }
 
-var typeTimeDuration = reflect.TypeOf(time.Duration(0))
+var typeTimeDuration = reflect.TypeFor[time.Duration]()
 
 func errUnmarshalEnv(path, envVar string, tp reflect.Type, err error) error {
 	if err != nil {
@@ -677,8 +678,8 @@ FOR_PATH:
 }
 
 func leftmostPathElement(s string) (element, rest string) {
-	if i := strings.IndexByte(s, '.'); i != -1 {
-		return s[:i], s[i+1:]
+	if before, after, ok := strings.Cut(s, "."); ok {
+		return before, after
 	}
 	return s, ""
 }
@@ -864,12 +865,10 @@ func ValidateType[T any]() error {
 
 		switch tp.Kind() {
 		case reflect.Struct:
-			for _, p := range stack {
-				if p == tp {
-					// Recursive type
-					return fmt.Errorf("at %s: %w",
-						path, ErrTypeRecursive)
-				}
+			if slices.Contains(stack, tp) {
+				// Recursive type
+				return fmt.Errorf("at %s: %w",
+					path, ErrTypeRecursive)
 			}
 			stack = append(stack, tp) // Push stack
 
@@ -1018,8 +1017,8 @@ func getYAMLFieldName(t reflect.StructTag) string {
 
 func yamlTagIsInline(t reflect.StructTag) bool {
 	yamlTag := t.Get("yaml")
-	opts := strings.Split(yamlTag, ",")
-	for _, opt := range opts {
+	opts := strings.SplitSeq(yamlTag, ",")
+	for opt := range opts {
 		if opt == "inline" {
 			return true
 		}
