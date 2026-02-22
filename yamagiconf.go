@@ -74,8 +74,10 @@ var (
 	ErrTypeInvalidEnvTag    = fmt.Errorf("invalid env struct tag: "+
 		"must match the POSIX env var regexp: %s", regexEnvVarPOSIXPattern)
 	ErrTypeEnvVarOnUnsupportedType = errors.New("env var on unsupported type")
-	ErrTypeUnsupported             = errors.New("unsupported type")
-	ErrTypeUnsupportedPtrType      = errors.New("unsupported pointer type")
+	ErrTypeEnvTagInContainer = errors.New(
+		"env tag behind pointer, slice, or map is not allowed")
+	ErrTypeUnsupported        = errors.New("unsupported type")
+	ErrTypeUnsupportedPtrType = errors.New("unsupported pointer type")
 
 	ErrEnvInvalidVar = errors.New("invalid env var")
 )
@@ -594,36 +596,12 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 				return err
 			}
 		}
-	case reflect.Slice, reflect.Array:
+	case reflect.Array:
 		for i := range v.Len() {
 			err := unmarshalEnv(fmt.Sprintf("%s[%d]", path, i), "", v.Index(i))
 			if err != nil {
 				return err
 			}
-		}
-	case reflect.Map:
-		keys := mapKeysSorted(v)
-		for _, key := range keys {
-			path := fmt.Sprintf("%s[%s]", path, key.String())
-			value := v.MapIndex(key)
-
-			if tp.Elem().Kind() == reflect.Pointer {
-				if value.IsNil() {
-					continue
-				}
-				if err := unmarshalEnv(path, "", value.Elem()); err != nil {
-					return err
-				}
-				continue
-			}
-
-			val := reflect.New(value.Type()).Elem()
-			val.Set(value)
-
-			if err := unmarshalEnv(path, "", val); err != nil {
-				return err
-			}
-			v.SetMapIndex(key, val)
 		}
 	}
 	return nil
@@ -856,8 +834,8 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 //   - T contains any struct containing multiple fields with the same yaml tag.
 func ValidateType[T any]() error {
 	stack := []reflect.Type{}
-	var traverse func(path string, tp reflect.Type) error
-	traverse = func(path string, tp reflect.Type) error {
+	var traverse func(path string, tp reflect.Type, behindNullable bool) error
+	traverse = func(path string, tp reflect.Type, behindNullable bool) error {
 		if implementsInterface[encoding.TextUnmarshaler](tp) ||
 			implementsInterface[yaml.Unmarshaler](tp) {
 			return validateTypeImplementingIfaces(path, tp)
@@ -894,6 +872,12 @@ func ValidateType[T any]() error {
 					}
 				}
 
+				if behindNullable {
+					if _, ok := f.Tag.Lookup("env"); ok {
+						return fmt.Errorf("at %s: %w", path, ErrTypeEnvTagInContainer)
+					}
+				}
+
 				if err := validateEnvField(f); err != nil {
 					return fmt.Errorf("at %s: %w", path, err)
 				}
@@ -913,7 +897,7 @@ func ValidateType[T any]() error {
 					}
 					yamlTags[yamlTag] = path
 				}
-				err := traverse(path, f.Type)
+				err := traverse(path, f.Type, behindNullable)
 				if err != nil {
 					return err
 				}
@@ -934,7 +918,7 @@ func ValidateType[T any]() error {
 			case reflect.Pointer, reflect.Slice, reflect.Map:
 				return fmt.Errorf("at %s: %w", path, ErrTypeUnsupportedPtrType)
 			}
-			return traverse(path, tp)
+			return traverse(path, tp, true)
 		case reflect.Int:
 			return fmt.Errorf("at %s: %w: %s, %s",
 				path, ErrTypeUnsupported, tp.String(),
@@ -945,13 +929,15 @@ func ValidateType[T any]() error {
 				path, ErrTypeUnsupported, tp.String(),
 				"use unsigned integer type with specified width, "+
 					"such as uint8, uint16, uint32 or uint64 instead of uint")
-		case reflect.Slice, reflect.Array:
-			return traverse(path, tp.Elem())
+		case reflect.Slice:
+			return traverse(path, tp.Elem(), true)
+		case reflect.Array:
+			return traverse(path, tp.Elem(), behindNullable)
 		case reflect.Map:
-			if err := traverse(path+"[key]", tp.Key()); err != nil {
+			if err := traverse(path+"[key]", tp.Key(), true); err != nil {
 				return err
 			}
-			return traverse(path+"[value]", tp.Elem())
+			return traverse(path+"[value]", tp.Elem(), true)
 		}
 		return nil
 	}
@@ -968,7 +954,7 @@ func ValidateType[T any]() error {
 		implementsInterface[yaml.Unmarshaler](tp) {
 		return fmt.Errorf("at %s: %w", n, ErrTypeIllegalRoot)
 	}
-	return traverse(n, tp)
+	return traverse(n, tp, false)
 }
 
 // validateTypeImplementingIfaces assumes that implementer is

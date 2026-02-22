@@ -678,6 +678,87 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 		require.Equal(t,
 			"at TestConfig.Y: env var on unsupported type: int", err.Error())
 	})
+
+	t.Run("in_slice", func(t *testing.T) {
+		type Item struct {
+			Name   string `yaml:"name"`
+			Secret string `yaml:"secret" env:"SECRET"`
+		}
+		type TestConfig struct {
+			Items []Item `yaml:"items"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		require.Equal(t,
+			"at TestConfig.Items.Secret: env tag behind pointer, "+
+				"slice, or map is not allowed", err.Error())
+	})
+
+	t.Run("in_map_value", func(t *testing.T) {
+		type Item struct {
+			Name   string `yaml:"name"`
+			Secret string `yaml:"secret" env:"SECRET"`
+		}
+		type TestConfig struct {
+			Items map[string]Item `yaml:"items"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		require.Equal(t,
+			"at TestConfig.Items[value].Secret: env tag behind pointer, "+
+				"slice, or map is not allowed", err.Error())
+	})
+
+	t.Run("in_ptr", func(t *testing.T) {
+		type Item struct {
+			Name   string `yaml:"name"`
+			Secret string `yaml:"secret" env:"SECRET"`
+		}
+		type TestConfig struct {
+			Item *Item `yaml:"item"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		require.Equal(t,
+			"at TestConfig.Item.Secret: env tag behind pointer, "+
+				"slice, or map is not allowed", err.Error())
+	})
+
+	t.Run("in_nested_struct_in_slice", func(t *testing.T) {
+		type Inner struct {
+			Secret string `yaml:"secret" env:"SECRET"`
+		}
+		type Item struct {
+			Name  string `yaml:"name"`
+			Inner Inner  `yaml:"inner"`
+		}
+		type TestConfig struct {
+			Items []Item `yaml:"items"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		require.Equal(t,
+			"at TestConfig.Items.Inner.Secret: env tag behind pointer, "+
+				"slice, or map is not allowed", err.Error())
+	})
+
+	t.Run("in_nested_struct_in_ptr", func(t *testing.T) {
+		type Inner struct {
+			Secret string `yaml:"secret" env:"SECRET"`
+		}
+		type Item struct {
+			Name  string `yaml:"name"`
+			Inner Inner  `yaml:"inner"`
+		}
+		type TestConfig struct {
+			Item *Item `yaml:"item"`
+		}
+		err := yamagiconf.ValidateType[TestConfig]()
+		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		require.Equal(t,
+			"at TestConfig.Item.Inner.Secret: env tag behind pointer, "+
+				"slice, or map is not allowed", err.Error())
+	})
 }
 
 type TestConfigRecurThroughContainerPtr struct {
@@ -2132,83 +2213,69 @@ container:
 	})
 }
 
-type EnvVarStructPointer struct {
-	Named *EnvVarStructPointerNamed `yaml:"named"`
-	Anon  *struct {
-		X string `yaml:"x" env:"XVAR"`
-	} `yaml:"anon"`
-	EnvVarStructPointerEmbedded     `yaml:",inline"`
-	*EnvVarStructPointerEmbeddedPtr `yaml:",inline"`
-}
-
-type EnvVarStructPointerNamed struct {
-	X string `yaml:"x" env:"XVAR"`
-}
-
-type EnvVarStructPointerEmbedded struct {
-	Embedded *EnvVarStructPointerNamed `yaml:"embedded"`
-}
-
-type EnvVarStructPointerEmbeddedPtr struct {
-	EmbeddedPtr *EnvVarStructPointerNamed `yaml:"embedded_ptr"`
-}
-
-func TestLoadEnvStructPointer(t *testing.T) {
-	f := func(input string) (c EnvVarStructPointer) {
-		err := yamagiconf.Load(input, &c)
-		require.NoError(t, err)
-		return c
+func TestLoadEnvVarInEmbedded(t *testing.T) {
+	type Base struct {
+		Secret string `yaml:"secret" env:"EMBED_SECRET"`
+	}
+	type TestConfig struct {
+		Base `yaml:",inline"`
+		Name string `yaml:"name"`
 	}
 
-	// Zero value
-	a := f(`
-named:
-anon:
-embedded:
-embedded_ptr:
+	t.Setenv("EMBED_SECRET", "from_env")
+	c, err := LoadSrc[TestConfig](`
+name: foo
+secret: yaml_val
 `)
-	require.Nil(t, a.Named)
-	require.Nil(t, a.Anon)
-	require.Nil(t, a.Embedded)
-	require.Nil(t, a.EmbeddedPtr)
+	require.NoError(t, err)
+	require.Equal(t, "from_env", c.Secret)
+	require.Equal(t, "foo", c.Name)
+}
 
-	// Without env var
-	a = f(`
-named:
-  x: initial
-anon:
-  x: initial
-embedded:
-  x: initial
-embedded_ptr:
-  x: initial
-`)
-	require.Equal(t, "initial", a.Named.X)
-	require.Equal(t, "initial", a.Anon.X)
-	require.Equal(t, "initial", a.Embedded.X)
-	require.Equal(t, "initial", a.EmbeddedPtr.X)
+func TestLoadEnvVarInArray(t *testing.T) {
+	type Item struct {
+		Name   string `yaml:"name"`
+		Secret string `yaml:"secret" env:"ARRAY_SECRET"`
+	}
+	type TestConfig struct {
+		Items [2]Item `yaml:"items"`
+	}
 
-	// With env var set
-	t.Setenv("XVAR", "replaced")
-	a = f(`
-named:
-  x: initial
-anon:
-  x: initial
-embedded:
-  x: initial
-embedded_ptr:
-  x: initial
+	t.Run("env_set", func(t *testing.T) {
+		t.Setenv("ARRAY_SECRET", "from_env")
+		c, err := LoadSrc[TestConfig](`
+items:
+  - name: foo
+    secret: yaml_val
+  - name: bar
+    secret: yaml_val
 `)
-	require.Equal(t, "replaced", a.Named.X)
-	require.Equal(t, "replaced", a.Anon.X)
-	require.Equal(t, "replaced", a.Embedded.X)
-	require.Equal(t, "replaced", a.EmbeddedPtr.X)
+		require.NoError(t, err)
+		require.Equal(t, [2]Item{
+			{Name: "foo", Secret: "from_env"},
+			{Name: "bar", Secret: "from_env"},
+		}, c.Items)
+	})
+
+	t.Run("env_not_set", func(t *testing.T) {
+		c, err := LoadSrc[TestConfig](`
+items:
+  - name: foo
+    secret: yaml_val
+  - name: bar
+    secret: yaml_val
+`)
+		require.NoError(t, err)
+		require.Equal(t, [2]Item{
+			{Name: "foo", Secret: "yaml_val"},
+			{Name: "bar", Secret: "yaml_val"},
+		}, c.Items)
+	})
 }
 
 func TestLoadEnvVar(t *testing.T) {
 	type Foo struct {
-		Foo string `yaml:"foo" env:"FOO"`
+		Foo string `yaml:"foo"`
 	}
 	type Map2D = map[string]map[string]string
 	type TestConfig struct {
@@ -2325,7 +2392,6 @@ func TestLoadEnvVar(t *testing.T) {
 	t.Setenv("PTR_TIME_NULL", "null")
 	t.Setenv("PTR_DURATION_NULL", "null")
 
-	t.Setenv("FOO", "bar")
 	t.Setenv("UNMARSH_TEXT", "ut")
 	t.Setenv("PTR_UNMARSH_TEXT", "ptr_ut")
 
@@ -2451,14 +2517,14 @@ ptr-unm-text: null
 	require.Nil(t, c.PtrTimeNull)
 	require.Nil(t, c.PtrDurationNull)
 
-	require.Equal(t, Foo{Foo: "bar"}, c.Foo)
-	require.Equal(t, map[string]Foo{"key": {Foo: "bar"}}, c.MapFoo)
+	require.Equal(t, Foo{Foo: "foo"}, c.Foo)
+	require.Equal(t, map[string]Foo{"key": {Foo: "fuzz"}}, c.MapFoo)
 	require.Equal(t, map[string]*Foo{
-		"bar":  {Foo: "bar"},
+		"bar":  {Foo: "fuzz"},
 		"bazz": nil,
 	}, c.MapPtrFoo)
-	require.Equal(t, []Foo{{Foo: "bar"}, {Foo: "bar"}}, c.SliceFoo)
-	require.Equal(t, [1]Foo{{Foo: "bar"}}, c.ArrayFoo)
+	require.Equal(t, []Foo{{Foo: "fuzz"}, {Foo: "fuzz"}}, c.SliceFoo)
+	require.Equal(t, [1]Foo{{Foo: "fuzz"}}, c.ArrayFoo)
 	require.Equal(t, Map2D{
 		"foo":  {"bar": "bazz", "muzz": "tazz"},
 		"kraz": {"fraz": "sazz"},
@@ -2619,60 +2685,6 @@ ptr-duration-null: null
 	require.Nil(t, c.PtrDurationNull)
 
 	require.Zero(t, c.NoYAMLStr)
-}
-
-func TestLoadEnvVarErr(t *testing.T) {
-	t.Run("map_of_slice", func(t *testing.T) {
-		type Dur struct {
-			Duration time.Duration `yaml:"duration" env:"DURATION"`
-		}
-		type Container struct {
-			Map map[string][]Dur `yaml:"map"`
-		}
-		type TestConfig struct {
-			Container Container `yaml:"container"`
-		}
-		t.Setenv("DURATION", "10minutes") // Invalid time.Duration value
-		_, err := LoadSrc[TestConfig](`
-container:
-  map:
-    foo:
-      - duration: 12s
-    bar:
-      - duration: 12m
-`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, `at TestConfig.Container.Map[bar][0].Duration: `+
-			`invalid env var DURATION: expected time.Duration: time: `+
-			`unknown unit "minutes" in duration "10minutes"`, err.Error())
-	})
-
-	t.Run("map_of_map", func(t *testing.T) {
-		type Dur struct {
-			Duration time.Duration `yaml:"duration" env:"DURATION"`
-		}
-		type Container struct {
-			Map map[string]map[string]*Dur `yaml:"map"`
-		}
-		type TestConfig struct {
-			Container Container `yaml:"container"`
-		}
-		t.Setenv("DURATION", "10minutes") // Invalid time.Duration value
-		_, err := LoadSrc[TestConfig](`
-container:
-  map:
-    foo:
-      fazz:
-        duration: 12s
-    bar:
-      bazz:
-        duration: 12m
-`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, `at TestConfig.Container.Map[bar][bazz].Duration: `+
-			`invalid env var DURATION: expected time.Duration: time: `+
-			`unknown unit "minutes" in duration "10minutes"`, err.Error())
-	})
 }
 
 func TestLoadErrInvalidEnvVar(t *testing.T) {
