@@ -904,7 +904,7 @@ func ValidateType[T any]() error {
 				}
 				exportedFields++
 
-				// Avoid checking tag redifinition for embedded fields.
+				// Avoid checking tag redefinition for embedded fields.
 				// For embedded fields yamlTag will always be == "".
 				if yamlTag != "" {
 					if previous, ok := yamlTags[yamlTag]; ok {
@@ -1049,7 +1049,7 @@ func validateEnvField(f reflect.StructField) error {
 	case kindIsPrimitive(k):
 		return nil
 	case k == reflect.Pointer && kindIsPrimitive(f.Type.Elem().Kind()):
-		// Pointer to primitve
+		// Pointer to primitive
 		return nil
 	case implementsInterface[encoding.TextUnmarshaler](f.Type):
 		return nil
