@@ -37,10 +37,10 @@ an error annotated with line and column in the YAML file if necessary.
 	  Allows only floats, ints, strings, bool and types that implement the
 	  [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids the use of `env` on primitive fields implementing
-	the [`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler) interface.
+	the [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler) interface.
 	- 🚫 Forbids the use of `yaml` and `env` struct tags within implementations of
 	  [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) and/or
-	  [`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler).
+	  [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler).
 	- 🚫 Forbids the use of YAML struct tag option `"inline"` for non-embedded structs and
 	  requires embedded structs to use option `"inline"`.
 - YAML restrictions:
@@ -71,8 +71,8 @@ an error annotated with line and column in the YAML file if necessary.
 	validation struct tags.
 	- Implements `env` struct tags to overwrite fields from env vars if provided.
 	- Supports [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler)
-	  and [`yaml.Unmarshaler`](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler)
-	  (except for the root struct type).
+	  and [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler)
+	(except for the root struct type).
 	- Supports `time.Duration`.
 	- `WithStrictPresence()` option requires all fields defined in the Go struct
 	  to be present in the YAML source (missing fields become an error instead of
@@ -100,7 +100,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/romshark/yamagiconf/v2"
+	"github.com/romshark/yamagiconf"
 )
 
 type Config struct {
@@ -166,6 +166,6 @@ array:
 
 Even though this YAML array works as expect with a Go array:
 `[4]string{"", "", "", "x"}`, parsing the same YAML into a Go slice will result in
-the empty item being ommited: `[]string{"", "", "x"}` which is counterintuitive.
+the empty item being omitted: `[]string{"", "", "x"}` which is counterintuitive.
 Therefore, yamagiconf forbids empty array items in general to keep behavior
 consistent and intuitive independent of the Go target type.
