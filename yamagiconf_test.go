@@ -25,6 +25,14 @@ func LoadSrc[T any](src string) (*T, error) {
 	return &c, nil
 }
 
+func LoadSrcOptional[T any](src string) (*T, error) {
+	var c T
+	if err := yamagiconf.Load(src, &c, yamagiconf.WithOptionalPresence()); err != nil {
+		return &c, err
+	}
+	return &c, nil
+}
+
 func TestLoadFile(t *testing.T) {
 	type Container struct {
 		AnyString string `yaml:"any-string"`
@@ -1539,6 +1547,32 @@ func TestLoadErrMissingConfig(t *testing.T) {
 		require.Equal(t,
 			`at T.M[0][0].Missing (as "missing"): missing field in config file`,
 			err.Error())
+	})
+}
+
+func TestLoadWithOptionalPresence(t *testing.T) {
+	type Config struct {
+		Present string `yaml:"present"`
+		Missing string `yaml:"missing"`
+	}
+
+	t.Run("default_errors_on_missing", func(t *testing.T) {
+		_, err := LoadSrc[Config]("present: 'hello'")
+		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+	})
+
+	t.Run("optional_allows_missing", func(t *testing.T) {
+		c, err := LoadSrcOptional[Config]("present: 'hello'")
+		require.NoError(t, err)
+		require.Equal(t, "hello", c.Present)
+		require.Equal(t, "", c.Missing) // zero value
+	})
+
+	t.Run("optional_ok_when_all_present", func(t *testing.T) {
+		c, err := LoadSrcOptional[Config]("present: 'hello'\nmissing: 'world'")
+		require.NoError(t, err)
+		require.Equal(t, "hello", c.Present)
+		require.Equal(t, "world", c.Missing)
 	})
 }
 
