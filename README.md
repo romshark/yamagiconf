@@ -15,7 +15,7 @@
 The heavily opinionated **YA**ML **Magi**c **Conf**iguration framework for Go
 keeps your configs simple and consistent
 by being *more restrictive than your regular YAML parser* 🚷 allowing only a subset of YAML
-and enforcing some restrictions to the target Go type.
+and enforcing some restrictions on the target Go type.
 
 If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell),
@@ -34,7 +34,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- ❗️ Requires `yaml` struct tags on all exported fields.
 	- ❗️ Requires `env` struct tags to be POSIX-style.
 	- 🚫 Forbids the use of `env` struct tag on non-primitive fields.
-	  Allows only floats, ints, strings, bool and types that implement the
+	  Allows only floats, ints, strings, bools and types that implement the
 	  [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler) interface.
 	- 🚫 Forbids the use of `env` on primitive fields implementing
 	  the [`yaml.Unmarshaler`](https://pkg.go.dev/go.yaml.in/yaml/v4#Unmarshaler) interface.
@@ -166,7 +166,7 @@ array:
   - x
 ```
 
-Even though this YAML array works as expect with a Go array:
+Even though this YAML array works as expected with a Go array:
 `[4]string{"", "", "", "x"}`, parsing the same YAML into a Go slice will result in
 the empty item being omitted: `[]string{"", "", "x"}` which is counterintuitive.
 Therefore, yamagiconf forbids empty array items in general to keep behavior
