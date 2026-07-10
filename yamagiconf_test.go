@@ -3499,3 +3499,60 @@ container:
 
 	assert.Zero(t, c.Container)
 }
+
+// FuzzConfig is a deliberately varied config type that exercises most of the
+// value-handling code paths: scalars, pointers, slices, arrays, maps with string and
+// non-string keys, nested structs, time.Duration, a TextUnmarshaler, a Validator,
+// and a go-playground validate tag.
+type FuzzConfig struct {
+	Str     string            `yaml:"str"`
+	Int     int32             `yaml:"int"`
+	Float   float64           `yaml:"float"`
+	Bool    bool              `yaml:"bool"`
+	Ptr     *string           `yaml:"ptr"`
+	Slice   []string          `yaml:"slice"`
+	Array   [2]int16          `yaml:"array"`
+	Map     map[string]string `yaml:"map"`
+	MapInt  map[int8]string   `yaml:"map-int"`
+	Nested  FuzzNested        `yaml:"nested"`
+	NestedP *FuzzNested       `yaml:"nested-ptr"`
+	Dur     time.Duration     `yaml:"dur"`
+	Text    TextUnmarshaler   `yaml:"text"`
+	Valid   ValidatedString   `yaml:"valid"`
+	Req     string            `yaml:"req" validate:"required"`
+}
+
+type FuzzNested struct {
+	A string            `yaml:"a"`
+	B []ValidatedString `yaml:"b"`
+}
+
+// FuzzLoad asserts the core robustness invariant: Load must never panic,
+// regardless of the YAML input. It returns an error or succeeds, but never
+// crashes. The seeds include inputs that previously caused panics.
+func FuzzLoad(f *testing.F) {
+	seeds := []string{
+		// A fully valid document (exercises the success path end-to-end).
+		"str: s\nint: 1\nfloat: 1.5\nbool: true\nptr: p\n" +
+			"slice:\n  - a\narray: [1, 2]\nmap:\n  k: v\n" +
+			"map-int:\n  1: v\nnested:\n  a: x\n  b:\n    - valid\n" +
+			"nested-ptr: null\ndur: 1s\ntext: t\nvalid: valid\nreq: r\n",
+		// Inputs that previously triggered panics.
+		"nested:\n  a: &x y\nstr: *x\n",   // alias field before anchor field
+		"map-int:\n  1: v\n",              // non-string map key
+		"nested:\n  - x\n  - a\n",         // struct given a sequence
+		"map:\n  - a\n  - b\n  - c\n",     // map given odd-length sequence
+		"nested-ptr:\n  a: ''\n  b: []\n", // validate/Validator behind a pointer
+		// Structural edge cases.
+		"", "null\n", "- a\n- b\n", "just scalar\n", "{}\n", "[]\n",
+		"str: null\n", "ptr: null\n", "map: null\n", "slice: null\n",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, src string) {
+		var c FuzzConfig
+		// The result (error or nil) is irrelevant; the invariant is: no panic.
+		_ = yamagiconf.Load(src, &c)
+	})
+}
