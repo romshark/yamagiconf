@@ -1,0 +1,29 @@
+# yamagiconf is a library, not an executable, so no binaries are built.
+# GoReleaser is used only to cut GitHub releases with an auto-generated
+# changelog and a source archive.
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - skip: true
+
+source:
+  enabled: true
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  github:
+    owner: romshark
+    name: yamagiconf
