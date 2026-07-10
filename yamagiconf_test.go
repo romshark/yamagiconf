@@ -421,6 +421,23 @@ container:
 	})
 }
 
+// TestAnchorDefinedAfterAliasField ensures that when the struct field holding an
+// alias is declared before the field defining the referenced anchor,
+// struct-order traversal reaching the alias before the anchor must neither panic
+// nor be falsely reported as an unused anchor.
+func TestAnchorDefinedAfterAliasField(t *testing.T) {
+	type TestConfig struct {
+		Alias  string `yaml:"alias"`  // references the anchor
+		Anchor string `yaml:"anchor"` // defines the anchor
+	}
+	// YAML document order is valid (anchor before alias); only the Go struct
+	// field order is reversed.
+	c, err := LoadSrc[TestConfig]("anchor: &x value\nalias: *x\n")
+	require.NoError(t, err)
+	require.Equal(t, "value", c.Alias)
+	require.Equal(t, "value", c.Anchor)
+}
+
 func TestLoadErrYAMLAnchorNoValue(t *testing.T) {
 	t.Run("ok_noerror", func(t *testing.T) {
 		type Values struct {

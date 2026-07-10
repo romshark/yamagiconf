@@ -722,10 +722,24 @@ func validateYAMLValues(
 			return fmt.Errorf("at %d:%d: anchor %q: %w",
 				node.Line, node.Column, node.Anchor, ErrYAMLAnchorNoValue)
 		}
-		anchors[node.Anchor] = &anchor{Node: node, Defined: true}
+		if p, ok := anchors[node.Anchor]; ok {
+			// An alias referencing this anchor was traversed before the anchor
+			// definition itself (struct field order need not match YAML document
+			// order). Preserve the recorded usage instead of overwriting it.
+			p.Node, p.Defined = node, true
+		} else {
+			anchors[node.Anchor] = &anchor{Node: node, Defined: true}
+		}
 	}
 	if node.Alias != nil {
-		anchors[node.Alias.Anchor].IsUsed = true
+		p, ok := anchors[node.Alias.Anchor]
+		if !ok {
+			// Alias traversed before its anchor definition; record the usage so
+			// the anchor is not later reported as unused once it is defined.
+			p = &anchor{Node: node.Alias}
+			anchors[node.Alias.Anchor] = p
+		}
+		p.IsUsed = true
 		node = node.Alias
 	}
 
