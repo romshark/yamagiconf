@@ -13,7 +13,7 @@ import (
 
 	"github.com/romshark/yamagiconf"
 
-	"github.com/stretchr/testify/require"
+	"github.com/alecthomas/assert/v2"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -132,43 +132,43 @@ container:
   any-string: 'any string'
 int32: 42
 enabled: true`), 0o664)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	var c TestConfig
 	err = yamagiconf.LoadFile(p, &c)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	require.Equal(t, `any string`, c.AnyString)
-	require.Equal(t, `!tag value`, c.NotATag)
-	require.Equal(t, `null`, c.StrQuotedNull)
-	require.Equal(t, `null`, c.StrDubQuotNull)
-	require.Equal(t, "null\n", c.StrBlockNull)
-	require.Equal(t, "null\n", c.StrFoldBlockNull)
-	require.Equal(t, `OK`, c.RequiredString)
-	require.Equal(t, int32(42), c.Int32)
-	require.Equal(t, map[string]string{"foo": "val", "bazz": "val"}, c.MapStringString)
-	require.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapInt16Int16)
-	require.Nil(t, c.MapInt16Int16Null)
-	require.Equal(t, map[string]Container{
+	assert.Equal(t, `any string`, c.AnyString)
+	assert.Equal(t, `!tag value`, c.NotATag)
+	assert.Equal(t, `null`, c.StrQuotedNull)
+	assert.Equal(t, `null`, c.StrDubQuotNull)
+	assert.Equal(t, "null\n", c.StrBlockNull)
+	assert.Equal(t, "null\n", c.StrFoldBlockNull)
+	assert.Equal(t, `OK`, c.RequiredString)
+	assert.Equal(t, int32(42), c.Int32)
+	assert.Equal(t, map[string]string{"foo": "val", "bazz": "val"}, c.MapStringString)
+	assert.Equal(t, map[int16]int16{2: 4, 4: 8}, c.MapInt16Int16)
+	assert.Zero(t, c.MapInt16Int16Null)
+	assert.Equal(t, map[string]Container{
 		"foo": {AnyString: "foo"},
 		"bar": {AnyString: "bar"},
 	}, c.MapContainer)
-	require.Equal(t, map[string]*Container{
+	assert.Equal(t, map[string]*Container{
 		"foo":  {AnyString: "foo"},
 		"bar":  nil,
 		"bazz": nil,
 	}, c.MapContainerPtr)
-	require.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
-	require.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
-	require.Nil(t, c.SliceInt64Null)
-	require.Equal(t, [][]string{{"first", "second"}, {"third"}}, c.SliceSliceString)
-	require.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
-	require.Equal(t, `YAML unmarshaler non-pointer non-null`, string(c.UnmarshalerYAML))
-	require.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
-	require.Equal(t, `YAML unmarshaler pointer`, string(*c.PtrUnmarshalerYAML))
-	require.Equal(t, `Text unmarshaler pointer`, c.PtrUnmarshalerText.Str)
-	require.Nil(t, c.PtrUnmarshalerYAMLNull)
-	require.Nil(t, c.PtrUnmarshalerTextNull)
+	assert.Equal(t, []string{"1", "2", "3"}, c.SliceStr)
+	assert.Equal(t, []int64{1, 2, 3}, c.SliceInt64)
+	assert.Zero(t, c.SliceInt64Null)
+	assert.Equal(t, [][]string{{"first", "second"}, {"third"}}, c.SliceSliceString)
+	assert.Equal(t, time.Date(2024, 5, 9, 20, 19, 22, 0, time.UTC), c.Time)
+	assert.Equal(t, `YAML unmarshaler non-pointer non-null`, string(c.UnmarshalerYAML))
+	assert.Equal(t, `Text unmarshaler non-pointer non-null`, c.UnmarshalerText.Str)
+	assert.Equal(t, `YAML unmarshaler pointer`, string(*c.PtrUnmarshalerYAML))
+	assert.Equal(t, `Text unmarshaler pointer`, c.PtrUnmarshalerText.Str)
+	assert.Zero(t, c.PtrUnmarshalerYAMLNull)
+	assert.Zero(t, c.PtrUnmarshalerTextNull)
 }
 
 func TestAnchors(t *testing.T) {
@@ -288,27 +288,27 @@ alias-map-str-str: *map-str-str
 alias-map-str-str-null: *map-str-str-null
 alias-map-complex: *map-complex
 `, &c)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	require.Equal(t, c.Bool, c.BoolAlias)
-	require.Equal(t, c.PtrBool, c.PtrBoolAlias)
-	require.Equal(t, c.PtrBoolNull, c.PtrBoolNullAlias)
-	require.Equal(t, c.Str, c.StrAlias)
-	require.Equal(t, c.Float32, c.Float32Alias)
-	require.Equal(t, c.Float64, c.Float64Alias)
-	require.Equal(t, c.Int8, c.Int8Alias)
-	require.Equal(t, c.Int16, c.Int16Alias)
-	require.Equal(t, c.Int32, c.Int32Alias)
-	require.Equal(t, c.Int64, c.Int64Alias)
-	require.Equal(t, c.Uint8, c.Uint8Alias)
-	require.Equal(t, c.Uint16, c.Uint16Alias)
-	require.Equal(t, c.Uint32, c.Uint32Alias)
-	require.Equal(t, c.Uint64, c.Uint64Alias)
-	require.Equal(t, c.SliceStr, c.SliceStrAlias)
-	require.Equal(t, c.SliceInt64, c.SliceInt64Alias)
-	require.Equal(t, c.SliceSliceStr, c.SliceSliceStrAlias)
-	require.Equal(t, c.MapStrStr, c.MapStrStrAlias)
-	require.Equal(t, c.MapComplex, c.MapComplexAlias)
+	assert.Equal(t, c.Bool, c.BoolAlias)
+	assert.Equal(t, c.PtrBool, c.PtrBoolAlias)
+	assert.Equal(t, c.PtrBoolNull, c.PtrBoolNullAlias)
+	assert.Equal(t, c.Str, c.StrAlias)
+	assert.Equal(t, c.Float32, c.Float32Alias)
+	assert.Equal(t, c.Float64, c.Float64Alias)
+	assert.Equal(t, c.Int8, c.Int8Alias)
+	assert.Equal(t, c.Int16, c.Int16Alias)
+	assert.Equal(t, c.Int32, c.Int32Alias)
+	assert.Equal(t, c.Int64, c.Int64Alias)
+	assert.Equal(t, c.Uint8, c.Uint8Alias)
+	assert.Equal(t, c.Uint16, c.Uint16Alias)
+	assert.Equal(t, c.Uint32, c.Uint32Alias)
+	assert.Equal(t, c.Uint64, c.Uint64Alias)
+	assert.Equal(t, c.SliceStr, c.SliceStrAlias)
+	assert.Equal(t, c.SliceInt64, c.SliceInt64Alias)
+	assert.Equal(t, c.SliceSliceStr, c.SliceSliceStrAlias)
+	assert.Equal(t, c.MapStrStr, c.MapStrStrAlias)
+	assert.Equal(t, c.MapComplex, c.MapComplexAlias)
 }
 
 func TestLoadErrInvalidUTF8(t *testing.T) {
@@ -318,32 +318,32 @@ func TestLoadErrInvalidUTF8(t *testing.T) {
 
 	t.Run("control_char_in_string", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("str: abc\u0000defg")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "control characters are not allowed")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "control characters are not allowed")
 	})
 
 	t.Run("control_char_in_key", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("s\u0000tr: abcdefg")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "control characters are not allowed")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "control characters are not allowed")
 	})
 
 	t.Run("overlong_encoding_of_U+0000", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xc0\x80: not ok")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "invalid length of a UTF-8 sequence")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "invalid length of a UTF-8 sequence")
 	})
 
 	t.Run("surrogate_half_U+D800_U+DFFF", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xed\xa0\x80: not ok")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "invalid Unicode character")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "invalid Unicode character")
 	})
 
 	t.Run("code_point_beyond_max_unicode_value", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("\xef\xbf\xff: not ok")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "invalid trailing UTF-8 octet")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "invalid trailing UTF-8 octet")
 	})
 }
 
@@ -365,8 +365,8 @@ container:
   three: *x
   four: *x
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
-		require.Equal(t, `at 3:6: redefined anchor "x" at 2:6: `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLAnchorRedefined)
+		assert.Equal(t, `at 3:6: redefined anchor "x" at 2:6: `+
 			`yaml anchors must be unique throughout the whole document`, err.Error())
 	})
 
@@ -378,8 +378,8 @@ container:
   three: &x
   four: *x
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorRedefined)
-		require.Equal(t, `at 5:10: redefined anchor "x" at 2:6: `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLAnchorRedefined)
+		assert.Equal(t, `at 5:10: redefined anchor "x" at 2:6: `+
 			`yaml anchors must be unique throughout the whole document`, err.Error())
 	})
 }
@@ -402,8 +402,8 @@ container:
   three: *a
   four: *a
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorUnused)
-		require.Equal(t, `at 3:6: anchor "b": `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLAnchorUnused)
+		assert.Equal(t, `at 3:6: anchor "b": `+
 			`yaml anchors must be referenced at least once`, err.Error())
 	})
 
@@ -415,8 +415,8 @@ container:
   three: &x ""
   four: not ok
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorUnused)
-		require.Equal(t, `at 5:10: anchor "x": `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLAnchorUnused)
+		assert.Equal(t, `at 5:10: anchor "x": `+
 			`yaml anchors must be referenced at least once`, err.Error())
 	})
 }
@@ -433,9 +433,9 @@ func TestAnchorDefinedAfterAliasField(t *testing.T) {
 	// YAML document order is valid (anchor before alias); only the Go struct
 	// field order is reversed.
 	c, err := LoadSrc[TestConfig]("anchor: &x value\nalias: *x\n")
-	require.NoError(t, err)
-	require.Equal(t, "value", c.Alias)
-	require.Equal(t, "value", c.Anchor)
+	assert.NoError(t, err)
+	assert.Equal(t, "value", c.Alias)
+	assert.Equal(t, "value", c.Anchor)
 }
 
 func TestLoadErrYAMLAnchorNoValue(t *testing.T) {
@@ -472,7 +472,7 @@ aliases:
   array-slice-str: *array-slice-str
   map-str-str: *map-str-str
 `)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	src := `
@@ -480,8 +480,8 @@ anchor: &anchor
 alias: *anchor
 `
 	checkErr := func(t *testing.T, err error) {
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLAnchorNoValue)
-		require.Equal(t, `at 2:9: anchor "anchor": `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLAnchorNoValue)
+		assert.Equal(t, `at 2:9: anchor "anchor": `+
 			`don't use anchors with implicit null value`, err.Error())
 	}
 
@@ -539,7 +539,7 @@ alias: *anchor
 base: &base []
 alias: *base
 `)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("ok_empty_map_anchor", func(t *testing.T) {
@@ -551,7 +551,7 @@ alias: *base
 base: &base {}
 alias: *base
 `)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }
 
@@ -562,8 +562,8 @@ func TestLoadErrMissingYAMLTag(t *testing.T) {
 			NoYAMLTag  string
 		}
 		_, err := LoadSrc[TestConfig]("has-yaml-tag: 'OK'\nNoYAMLTag: 'NO'\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeMissingYAMLTag)
-		require.Equal(t, "at TestConfig.NoYAMLTag: missing yaml struct tag", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeMissingYAMLTag)
+		assert.Equal(t, "at TestConfig.NoYAMLTag: missing yaml struct tag", err.Error())
 	})
 	t.Run("level_1", func(t *testing.T) {
 		type Foo struct{ NoYAMLTag string }
@@ -572,8 +572,8 @@ func TestLoadErrMissingYAMLTag(t *testing.T) {
 			Foo        Foo    `yaml:"foo"`
 		}
 		_, err := LoadSrc[TestConfig]("has-yaml-tag: 'OK'\nfoo:\n  NoYAMLTag: 'NO'\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeMissingYAMLTag)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeMissingYAMLTag)
+		assert.Equal(t,
 			"at TestConfig.Foo.NoYAMLTag: missing yaml struct tag",
 			err.Error())
 	})
@@ -589,8 +589,8 @@ has-yaml-tag: OK
 slice:
   - NoYAMLTag: NO
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeMissingYAMLTag)
-		require.Equal(t, "at TestConfig.Slice.NoYAMLTag: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeMissingYAMLTag)
+		assert.Equal(t, "at TestConfig.Slice.NoYAMLTag: "+
 			"missing yaml struct tag", err.Error())
 	})
 
@@ -605,8 +605,8 @@ has-yaml-tag: OK
 slice:
   - NoYAMLTag: NO
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeMissingYAMLTag)
-		require.Equal(t, "at TestConfig.Array.NoYAMLTag: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeMissingYAMLTag)
+		assert.Equal(t, "at TestConfig.Array.NoYAMLTag: "+
 			"missing yaml struct tag", err.Error())
 	})
 }
@@ -617,8 +617,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong string `yaml:"wrong" env:"notok"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeInvalidEnvTag)
-		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeInvalidEnvTag)
+		assert.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -627,8 +627,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong string `yaml:"wrong" env:"1NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeInvalidEnvTag)
-		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeInvalidEnvTag)
+		assert.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -637,8 +637,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong string `yaml:"wrong" env:"NOT-OK"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeInvalidEnvTag)
-		require.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeInvalidEnvTag)
+		assert.Equal(t, "at TestConfig.Wrong: invalid env struct tag: "+
 			"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
 
@@ -650,8 +650,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Container Container `yaml:"container"`
 		}
 		_, err := LoadSrc[TestConfig]("container:\n  wrong: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeInvalidEnvTag)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeInvalidEnvTag)
+		assert.Equal(t,
 			"at TestConfig.Container.Wrong: invalid env struct tag: "+
 				"must match the POSIX env var regexp: ^[A-Z_][A-Z0-9_]*$", err.Error())
 	})
@@ -664,8 +664,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Container Container `yaml:"container" env:"NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
+		assert.Equal(t,
 			"at TestConfig.Container: "+
 				"env var on unsupported type: yamagiconf_test.Container", err.Error())
 	})
@@ -678,8 +678,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Container *Container `yaml:"container" env:"NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("container:\n  ok: ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
+		assert.Equal(t,
 			"at TestConfig.Container: "+
 				"env var on unsupported type: *yamagiconf_test.Container", err.Error())
 	})
@@ -689,8 +689,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong []string `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
+		assert.Equal(t,
 			"at TestConfig.Wrong: "+
 				"env var on unsupported type: []string", err.Error())
 	})
@@ -700,8 +700,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvOnYAMLUnmarsh)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvOnYAMLUnmarsh)
+		assert.Equal(t,
 			"at TestConfig.Wrong: env var on yaml.Unmarshaler implementation: "+
 				"yamagiconf_test.YAMLUnmarshaler", err.Error())
 	})
@@ -711,8 +711,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Wrong *YAMLUnmarshaler `yaml:"wrong" env:"WRONG"`
 		}
 		_, err := LoadSrc[TestConfig]("wrong:\n  - ok\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvOnYAMLUnmarsh)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvOnYAMLUnmarsh)
+		assert.Equal(t,
 			"at TestConfig.Wrong: env var on yaml.Unmarshaler implementation: "+
 				"*yamagiconf_test.YAMLUnmarshaler", err.Error())
 	})
@@ -723,8 +723,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Y int    `yaml:"-" env:"NOTOK"`
 		}
 		_, err := LoadSrc[TestConfig]("x: x\n")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvVarOnUnsupportedType)
+		assert.Equal(t,
 			"at TestConfig.Y: env var on unsupported type: int", err.Error())
 	})
 
@@ -737,8 +737,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Items []Item `yaml:"items"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		assert.Equal(t,
 			"at TestConfig.Items.Secret: env tag behind pointer, "+
 				"slice, or map is not allowed", err.Error())
 	})
@@ -752,8 +752,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Items map[string]Item `yaml:"items"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		assert.Equal(t,
 			"at TestConfig.Items[value].Secret: env tag behind pointer, "+
 				"slice, or map is not allowed", err.Error())
 	})
@@ -767,8 +767,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Item *Item `yaml:"item"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		assert.Equal(t,
 			"at TestConfig.Item.Secret: env tag behind pointer, "+
 				"slice, or map is not allowed", err.Error())
 	})
@@ -785,8 +785,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Items []Item `yaml:"items"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		assert.Equal(t,
 			"at TestConfig.Items.Inner.Secret: env tag behind pointer, "+
 				"slice, or map is not allowed", err.Error())
 	})
@@ -803,8 +803,8 @@ func TestLoadInvalidEnvTag(t *testing.T) {
 			Item *Item `yaml:"item"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagInContainer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeEnvTagInContainer)
+		assert.Equal(t,
 			"at TestConfig.Item.Inner.Secret: env tag behind pointer, "+
 				"slice, or map is not allowed", err.Error())
 	})
@@ -854,28 +854,28 @@ recurs:
 
 	t.Run("through_container_ptr", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurThroughContainerPtr](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeRecursive)
-		require.Equal(t, "at TestConfigRecurThroughContainerPtr.Container.Recurs: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeRecursive)
+		assert.Equal(t, "at TestConfigRecurThroughContainerPtr.Container.Recurs: "+
 			"recursive type", err.Error())
 	})
 	t.Run("ptr_through_container", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurPtrThroughContainer](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeRecursive)
-		require.Equal(t, "at TestConfigRecurPtrThroughContainer.Container.Recurs: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeRecursive)
+		assert.Equal(t, "at TestConfigRecurPtrThroughContainer.Container.Recurs: "+
 			"recursive type", err.Error())
 	})
 
 	t.Run("through_slice", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurThroughSlice](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeRecursive)
-		require.Equal(t, "at TestConfigRecurThroughSlice.Recurs: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeRecursive)
+		assert.Equal(t, "at TestConfigRecurThroughSlice.Recurs: "+
 			"recursive type", err.Error())
 	})
 
 	t.Run("ptr_through_slice", func(t *testing.T) {
 		_, err := LoadSrc[TestConfigRecurPtrThroughSlice](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeRecursive)
-		require.Equal(t, "at TestConfigRecurPtrThroughSlice.Recurs: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeRecursive)
+		assert.Equal(t, "at TestConfigRecurPtrThroughSlice.Recurs: "+
 			"recursive type", err.Error())
 	})
 }
@@ -900,8 +900,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](`int: 42`)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Int: unsupported type: int, "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Int: unsupported type: int, "+
 			"use integer type with specified width, "+
 			"such as int8, int16, int32 or int64 instead of int", err.Error())
 	})
@@ -912,8 +912,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](`uint: 42`)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Uint: unsupported type: uint, "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Uint: unsupported type: uint, "+
 			"use unsigned integer type with specified width, "+
 			"such as uint8, uint16, uint32 or uint64 instead of uint", err.Error())
 	})
@@ -924,8 +924,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
-		require.Equal(t, "at TestConfig.PtrPtr: unsupported pointer type", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
+		assert.Equal(t, "at TestConfig.PtrPtr: unsupported pointer type", err.Error())
 	})
 
 	t.Run("ptr_ptr_in_slice", func(t *testing.T) {
@@ -934,8 +934,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
-		require.Equal(t, "at TestConfig.Slice: unsupported pointer type", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
+		assert.Equal(t, "at TestConfig.Slice: unsupported pointer type", err.Error())
 	})
 
 	t.Run("ptr_ptr_in_map", func(t *testing.T) {
@@ -944,8 +944,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
+		assert.Equal(t,
 			"at TestConfig.Map[value]: unsupported pointer type",
 			err.Error())
 	})
@@ -956,8 +956,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
-		require.Equal(t, "at TestConfig.PtrSlice: unsupported pointer type", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
+		assert.Equal(t, "at TestConfig.PtrSlice: unsupported pointer type", err.Error())
 	})
 
 	t.Run("ptr_map", func(t *testing.T) {
@@ -966,8 +966,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
-		require.Equal(t, "at TestConfig.PtrMap: unsupported pointer type", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupportedPtrType)
+		assert.Equal(t, "at TestConfig.PtrMap: unsupported pointer type", err.Error())
 	})
 
 	t.Run("channel", func(t *testing.T) {
@@ -976,8 +976,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Chan: unsupported type: chan int", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Chan: unsupported type: chan int", err.Error())
 	})
 
 	t.Run("func", func(t *testing.T) {
@@ -986,8 +986,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Func: unsupported type: func()", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Func: unsupported type: func()", err.Error())
 	})
 
 	t.Run("unsafe_pointer", func(t *testing.T) {
@@ -996,8 +996,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.UnsafePointer: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.UnsafePointer: "+
 			"unsupported type: unsafe.Pointer", err.Error())
 	})
 
@@ -1007,8 +1007,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Interface: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Interface: "+
 			"unsupported type: interface { Write() ([]uint8, int) }", err.Error())
 	})
 
@@ -1018,8 +1018,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig](yamlContents)
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Anything: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Anything: "+
 			"unsupported type: interface {}", err.Error())
 	})
 
@@ -1029,8 +1029,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig]("anything:\n  - foo\n  - bar")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Anything: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Anything: "+
 			"unsupported type: interface {}", err.Error())
 	})
 
@@ -1040,8 +1040,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig]("anything:\n  - foo\n  - bar")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Anything: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Anything: "+
 			"unsupported type: interface {}", err.Error())
 	})
 
@@ -1051,8 +1051,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig]("anything:\n  foo: bar")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Anything[key]: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Anything[key]: "+
 			"unsupported type: interface {}", err.Error())
 	})
 
@@ -1062,8 +1062,8 @@ recurs:
 		}
 
 		_, err := LoadSrc[TestConfig]("anything:\n  foo: bar")
-		require.ErrorIs(t, err, yamagiconf.ErrTypeUnsupported)
-		require.Equal(t, "at TestConfig.Anything[value]: "+
+		assert.IsError(t, err, yamagiconf.ErrTypeUnsupported)
+		assert.Equal(t, "at TestConfig.Anything[value]: "+
 			"unsupported type: interface {}", err.Error())
 	})
 }
@@ -1071,34 +1071,34 @@ recurs:
 func TestValidateTypeErrIllegalRootType(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		err := yamagiconf.ValidateType[string]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeIllegalRoot)
-		require.Equal(t, fmt.Sprintf(
+		assert.IsError(t, err, yamagiconf.ErrTypeIllegalRoot)
+		assert.Equal(t, fmt.Sprintf(
 			"at string: %s", yamagiconf.ErrTypeIllegalRoot.Error(),
 		), err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(string("ok")))
+		assert.Equal(t, err, yamagiconf.Validate(string("ok")))
 	})
 
 	t.Run("implements_yaml_unmarshaler", func(t *testing.T) {
 		err := yamagiconf.ValidateType[YAMLUnmarshaler]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeIllegalRoot)
-		require.Equal(t, fmt.Sprintf(
+		assert.IsError(t, err, yamagiconf.ErrTypeIllegalRoot)
+		assert.Equal(t, fmt.Sprintf(
 			"at YAMLUnmarshaler: %s", yamagiconf.ErrTypeIllegalRoot.Error(),
 		), err.Error())
 
 		var i YAMLUnmarshaler
-		require.Equal(t, err, yamagiconf.Validate(i))
+		assert.Equal(t, err, yamagiconf.Validate(i))
 	})
 
 	t.Run("implements_text_unmarshaler", func(t *testing.T) {
 		err := yamagiconf.ValidateType[TextUnmarshaler]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeIllegalRoot)
-		require.Equal(t, fmt.Sprintf(
+		assert.IsError(t, err, yamagiconf.ErrTypeIllegalRoot)
+		assert.Equal(t, fmt.Sprintf(
 			"at TextUnmarshaler: %s", yamagiconf.ErrTypeIllegalRoot.Error(),
 		), err.Error())
 
 		var i TextUnmarshaler
-		require.Equal(t, err, yamagiconf.Validate(i))
+		assert.Equal(t, err, yamagiconf.Validate(i))
 	})
 }
 
@@ -1109,12 +1109,12 @@ func TestValidateTypeErrYAMLTagOnUnexported(t *testing.T) {
 		unexported string `yaml:"unexported"`
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagOnUnexported)
-	require.Equal(t,
+	assert.IsError(t, err, yamagiconf.ErrYAMLTagOnUnexported)
+	assert.Equal(t,
 		"at TestConfig.unexported: yaml struct tag on unexported field",
 		err.Error())
 
-	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+	assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
@@ -1126,12 +1126,12 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			Container Container `yaml:",inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		assert.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("struct_with_tag", func(t *testing.T) {
@@ -1142,12 +1142,12 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			Container Container `yaml:"container,inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		assert.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("after_other_struct_tags", func(t *testing.T) {
@@ -1158,12 +1158,12 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			Container Container `yaml:",omitempty,inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		assert.Equal(t,
 			"at TestConfig.Container: inline yaml on non-embedded field",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("string", func(t *testing.T) {
@@ -1171,12 +1171,12 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			Str string `yaml:",inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		assert.Equal(t,
 			"at TestConfig.Str: inline yaml on non-embedded field",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("string_with_tag", func(t *testing.T) {
@@ -1184,12 +1184,12 @@ func TestValidateTypeErrYAMLInlineNonAnon(t *testing.T) {
 			Str string `yaml:"str,inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineNonAnon)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineNonAnon)
+		assert.Equal(t,
 			"at TestConfig.Str: inline yaml on non-embedded field",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 }
 
@@ -1202,12 +1202,12 @@ func TestValidateTypeErrYAMLInlineOpt(t *testing.T) {
 			Container `yaml:"container"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineOpt)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineOpt)
+		assert.Equal(t,
 			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("named_inline", func(t *testing.T) {
@@ -1218,12 +1218,12 @@ func TestValidateTypeErrYAMLInlineOpt(t *testing.T) {
 			Container `yaml:"container,inline"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLInlineOpt)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLInlineOpt)
+		assert.Equal(t,
 			"at TestConfig.Container: use `yaml:\",inline\"` for embedded fields",
 			err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 }
 
@@ -1233,12 +1233,12 @@ func TestValidateTypeErrYAMLTagRedefined(t *testing.T) {
 		Second string `yaml:"x"`
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLTagRedefined)
-	require.Equal(t, `at TestConfig.Second: yaml tag "x" `+
+	assert.IsError(t, err, yamagiconf.ErrYAMLTagRedefined)
+	assert.Equal(t, `at TestConfig.Second: yaml tag "x" `+
 		`previously defined on field TestConfig.First: `+
 		`a yaml struct tag must be unique`, err.Error())
 
-	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+	assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestErrYAMLMergeKey(t *testing.T) {
@@ -1260,8 +1260,8 @@ server-fallback:
   port: 54321
   <<: *default
 `, &c)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
-		require.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+		assert.IsError(t, err, yamagiconf.ErrYAMLMergeKey)
+		assert.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
 	})
 
 	t.Run("in_map", func(t *testing.T) {
@@ -1278,8 +1278,8 @@ map2:
   <<: *map1
   mar: tar
 `, &c)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
-		require.Equal(t, `at 6:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+		assert.IsError(t, err, yamagiconf.ErrYAMLMergeKey)
+		assert.Equal(t, `at 6:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
 	})
 
 	t.Run("in_nested_map_value", func(t *testing.T) {
@@ -1295,7 +1295,7 @@ outer:
   key:
     <<: *base
 `, &c)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
+		assert.IsError(t, err, yamagiconf.ErrYAMLMergeKey)
 	})
 
 	t.Run("map_multi_merge", func(t *testing.T) {
@@ -1313,8 +1313,8 @@ map2: &map2
 map3:
   <<: [*map1,*map2]
 `, &c)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMergeKey)
-		require.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
+		assert.IsError(t, err, yamagiconf.ErrYAMLMergeKey)
+		assert.Equal(t, `at 7:3: `+yamagiconf.ErrYAMLMergeKey.Error(), err.Error())
 	})
 }
 
@@ -1325,12 +1325,12 @@ func TestValidateTypeErrTypeEnvTagOnUnexported(t *testing.T) {
 		unexported string `env:"ok"`
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
-	require.ErrorIs(t, err, yamagiconf.ErrTypeEnvTagOnUnexported)
-	require.Equal(t,
+	assert.IsError(t, err, yamagiconf.ErrTypeEnvTagOnUnexported)
+	assert.Equal(t,
 		"at TestConfig.unexported: env tag on unexported field",
 		err.Error())
 
-	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+	assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrNoExportedFields(t *testing.T) {
@@ -1343,10 +1343,10 @@ func TestValidateTypeErrNoExportedFields(t *testing.T) {
 		ExportedButIgnored string `yaml:"-"`
 	}
 	err := yamagiconf.ValidateType[TestConfig]()
-	require.ErrorIs(t, err, yamagiconf.ErrTypeNoExportedFields)
-	require.Equal(t, "at TestConfig: no exported fields", err.Error())
+	assert.IsError(t, err, yamagiconf.ErrTypeNoExportedFields)
+	assert.Equal(t, "at TestConfig: no exported fields", err.Error())
 
-	require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+	assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 }
 
 func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
@@ -1355,12 +1355,12 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			X NoopTextUnmarshalerWithYAMLTag `yaml:"x"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
-		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
+		assert.IsError(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
+		assert.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
 			`but field contains tag "yaml" ("illegal"): `+
 			yamagiconf.ErrTypeTagOnInterfaceImpl.Error(), err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopYAMLUnmarshalerWithYAMLTag", func(t *testing.T) {
@@ -1368,12 +1368,12 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			X NoopYAMLUnmarshalerWithYAMLTag `yaml:"x"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
-		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
+		assert.IsError(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
+		assert.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
 			`but field contains tag "yaml" ("illegal"): `+
 			yamagiconf.ErrTypeTagOnInterfaceImpl.Error(), err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopTextUnmarshalerWithEnvTag", func(t *testing.T) {
@@ -1381,12 +1381,12 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			X NoopTextUnmarshalerWithEnvTag `yaml:"x"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
-		require.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
+		assert.IsError(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
+		assert.Equal(t, `at TestConfig.X: struct implements encoding.TextUnmarshaler `+
 			`but field contains tag "env" ("illegal"): `+
 			yamagiconf.ErrTypeTagOnInterfaceImpl.Error(), err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopYAMLUnmarshalerWithEnvTag", func(t *testing.T) {
@@ -1394,12 +1394,12 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			X NoopYAMLUnmarshalerWithEnvTag `yaml:"x"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.ErrorIs(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
-		require.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
+		assert.IsError(t, err, yamagiconf.ErrTypeTagOnInterfaceImpl)
+		assert.Equal(t, `at TestConfig.X: struct implements yaml.Unmarshaler `+
 			`but field contains tag "env" ("illegal"): `+
 			yamagiconf.ErrTypeTagOnInterfaceImpl.Error(), err.Error())
 
-		require.Equal(t, err, yamagiconf.Validate(TestConfig{}))
+		assert.Equal(t, err, yamagiconf.Validate(TestConfig{}))
 	})
 
 	t.Run("NoopTextUnmarshalerWithYAMLTag/ignored", func(t *testing.T) {
@@ -1410,7 +1410,7 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			Y string                         `yaml:"y"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("NoopYAMLUnmarshalerWithYAMLTag/ignored", func(t *testing.T) {
@@ -1421,7 +1421,7 @@ func TestValidateTypeErrTypeTagOnInterfaceImpl(t *testing.T) {
 			Y string                         `yaml:"y"`
 		}
 		err := yamagiconf.ValidateType[TestConfig]()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }
 
@@ -1457,12 +1457,12 @@ func TestAnonymousStructErrorPath(t *testing.T) {
 		MissingYAMLTag string
 	}
 	err := yamagiconf.Load(`ok: ok`, &c)
-	require.ErrorIs(t, err, yamagiconf.ErrTypeMissingYAMLTag)
-	require.Equal(t,
+	assert.IsError(t, err, yamagiconf.ErrTypeMissingYAMLTag)
+	assert.Equal(t,
 		"at struct{...}.MissingYAMLTag: missing yaml struct tag",
 		err.Error())
 
-	require.Equal(t, err, yamagiconf.Validate(c))
+	assert.Equal(t, err, yamagiconf.Validate(c))
 }
 
 func TestLoadErrMissingConfig(t *testing.T) {
@@ -1472,8 +1472,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 	}
 	t.Run("struct", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at TestConfig.Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1483,8 +1483,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			TestConfig *TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.TestConfig.Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1494,8 +1494,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M map[string]TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M["x"].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1505,8 +1505,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M map[string]*TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  x:\n    ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M["x"].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1516,8 +1516,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M []TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1527,8 +1527,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M []*TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1538,8 +1538,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M [2]TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1549,8 +1549,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M [2]*TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  - ok: 'OK'\n    missing: 'OK'\n  - ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M[1].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1560,8 +1560,8 @@ func TestLoadErrMissingConfig(t *testing.T) {
 			M [][]TestConfig `yaml:"config"`
 		}
 		_, err := LoadSrc[T]("config:\n  - - ok: 'OK'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
 			`at T.M[0][0].Missing (as "missing"): missing field in config file`,
 			err.Error())
 	})
@@ -1575,21 +1575,21 @@ func TestLoadWithOptionalPresence(t *testing.T) {
 
 	t.Run("default_errors_on_missing", func(t *testing.T) {
 		_, err := LoadSrc[Config]("present: 'hello'")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
 	})
 
 	t.Run("optional_allows_missing", func(t *testing.T) {
 		c, err := LoadSrcOptional[Config]("present: 'hello'")
-		require.NoError(t, err)
-		require.Equal(t, "hello", c.Present)
-		require.Equal(t, "", c.Missing) // zero value
+		assert.NoError(t, err)
+		assert.Equal(t, "hello", c.Present)
+		assert.Equal(t, "", c.Missing) // zero value
 	})
 
 	t.Run("optional_ok_when_all_present", func(t *testing.T) {
 		c, err := LoadSrcOptional[Config]("present: 'hello'\nmissing: 'world'")
-		require.NoError(t, err)
-		require.Equal(t, "hello", c.Present)
-		require.Equal(t, "world", c.Missing)
+		assert.NoError(t, err)
+		assert.Equal(t, "hello", c.Present)
+		assert.Equal(t, "world", c.Missing)
 	})
 }
 
@@ -1600,8 +1600,8 @@ func TestLoadNullOnNonPointer(t *testing.T) {
 			Str string `yaml:"str"`
 		}
 		_, err := LoadSrc[TestConfig]("ok: OK\nstr: null")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLNullOnNonPointer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLNullOnNonPointer)
+		assert.Equal(t,
 			`at 2:6: "str" (TestConfig.Str): cannot assign null to non-pointer type`,
 			err.Error())
 	})
@@ -1611,8 +1611,8 @@ func TestLoadNullOnNonPointer(t *testing.T) {
 			Uint32 uint32 `yaml:"uint32"`
 		}
 		_, err := LoadSrc[TestConfig]("ok: OK\nuint32: null")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLNullOnNonPointer)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLNullOnNonPointer)
+		assert.Equal(t,
 			`at 2:9: "uint32" (TestConfig.Uint32): cannot assign null to non-pointer type`,
 			err.Error())
 	})
@@ -1625,24 +1625,24 @@ func TestLoadErrYAMLTagUsed(t *testing.T) {
 
 	t.Run("str", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("str: !!str NOTOK")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLTagUsed)
+		assert.Equal(t,
 			`at 1:6: "str" (TestConfig.Str): tag "!!str": avoid using YAML tags`,
 			err.Error())
 	})
 
 	t.Run("custom", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("str: !.custom NOTOK")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLTagUsed)
+		assert.Equal(t,
 			`at 1:6: "str" (TestConfig.Str): tag "!.custom": avoid using YAML tags`,
 			err.Error())
 	})
 
 	t.Run("custom_novalue", func(t *testing.T) {
 		_, err := LoadSrc[TestConfig]("str: !0")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLTagUsed)
+		assert.Equal(t,
 			`at 1:6: "str" (TestConfig.Str): tag "!0": avoid using YAML tags`,
 			err.Error())
 	})
@@ -1655,8 +1655,8 @@ func TestLoadErrYAMLTagUsed(t *testing.T) {
 		}
 
 		_, err := LoadSrc[TestConfig]("container:\n  str: !.custom NOTOK")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLTagUsed)
+		assert.Equal(t,
 			`at 2:8: "str" (TestConfig.Container.Str): tag "!.custom": `+
 				`avoid using YAML tags`,
 			err.Error())
@@ -1670,8 +1670,8 @@ func TestLoadErrYAMLTagUsed(t *testing.T) {
 		}
 
 		_, err := LoadSrc[TestConfig]("container:\n  map:\n    key: !:custom value")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLTagUsed)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLTagUsed)
+		assert.Equal(t,
 			`at 3:10: "map" (TestConfig.Container.Map["key"]): tag "!:custom": `+
 				`avoid using YAML tags`,
 			err.Error())
@@ -1691,8 +1691,8 @@ slice:
   - # this is wrong
   - ok2
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
+		assert.Equal(t,
 			`at 6:4: "slice" (TestConfig.Slice): avoid empty items in arrays as those `+
 				`will not be appended to the target Go slice`,
 			err.Error())
@@ -1703,8 +1703,8 @@ slice:
 			Array2 [2]string `yaml:"array2"`
 		}
 		_, err := LoadSrc[TestConfig]("array2:\n  - ''\n  -\n")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrYAMLEmptyArrayItem)
+		assert.Equal(t,
 			`at 3:4: "array2" (TestConfig.Array2): avoid empty items in arrays as those `+
 				`will not be appended to the target Go slice`,
 			err.Error())
@@ -1716,7 +1716,7 @@ func TestLoadErrNilConfig(t *testing.T) {
 		Foo int8 `yaml:"foo"`
 	}
 	err := yamagiconf.Load[TestConfig]("non-existing.yaml", nil)
-	require.ErrorIs(t, err, yamagiconf.ErrConfigNil)
+	assert.IsError(t, err, yamagiconf.ErrConfigNil)
 }
 
 func TestLoadFileErrNotExist(t *testing.T) {
@@ -1725,9 +1725,9 @@ func TestLoadFileErrNotExist(t *testing.T) {
 	}
 	var c TestConfig
 	err := yamagiconf.LoadFile("non-existing.yaml", &c)
-	require.Error(t, err)
-	require.ErrorIs(t, err, os.ErrNotExist)
-	require.Zero(t, c)
+	assert.Error(t, err)
+	assert.IsError(t, err, os.ErrNotExist)
+	assert.Zero(t, c)
 }
 
 func TestLoadErr(t *testing.T) {
@@ -1738,28 +1738,28 @@ func TestLoadErr(t *testing.T) {
 	t.Run("file_empty", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "test-config.yaml")
 		_, err := os.Create(p)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		var c TestConfig
 		err = yamagiconf.LoadFile(p, &c)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLEmptyFile)
-		require.Zero(t, c)
+		assert.IsError(t, err, yamagiconf.ErrYAMLEmptyFile)
+		assert.Zero(t, c)
 	})
 
 	t.Run("nil_config", func(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "test-config.yaml")
 		_, err := os.Create(p)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = yamagiconf.LoadFile[TestConfig](p, nil)
-		require.ErrorIs(t, err, yamagiconf.ErrConfigNil)
-		require.Equal(t, "cannot load into nil config", err.Error())
+		assert.IsError(t, err, yamagiconf.ErrConfigNil)
+		assert.Equal(t, "cannot load into nil config", err.Error())
 	})
 
 	t.Run("invalid_yaml", func(t *testing.T) {
 		// Using tabs is illegal
 		c, err := LoadSrc[TestConfig]("x:\n\ttabs: 'TABS'\n  spaces: 'SPACES'\n")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "L2.C1")
-		require.NotZero(t, c)
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+		assert.Contains(t, err.Error(), "L2.C1")
+		assert.NotZero(t, c)
 	})
 
 	t.Run("multidocument", func(t *testing.T) {
@@ -1769,8 +1769,8 @@ foo: 1
 ---
 foo: 2
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
-		require.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
+		assert.IsError(t, err, yamagiconf.ErrYAMLMultidoc)
+		assert.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
 	})
 
 	t.Run("multidocument_second_doc_not_to_spec", func(t *testing.T) {
@@ -1780,8 +1780,8 @@ foo: 1
 ---
 bar: 2
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
-		require.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
+		assert.IsError(t, err, yamagiconf.ErrYAMLMultidoc)
+		assert.Equal(t, "at 4:1: "+yamagiconf.ErrYAMLMultidoc.Error(), err.Error())
 	})
 
 	t.Run("multidocument_error_in_second_file", func(t *testing.T) {
@@ -1791,10 +1791,10 @@ foo: 1
 ---
 :
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
-		require.Contains(t, err.Error(), yamagiconf.ErrYAMLMultidoc.Error())
-		require.Contains(t, err.Error(), "L5.C1")
-		require.Contains(t, err.Error(), "did not find expected key")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMultidoc)
+		assert.Contains(t, err.Error(), yamagiconf.ErrYAMLMultidoc.Error())
+		assert.Contains(t, err.Error(), "L5.C1")
+		assert.Contains(t, err.Error(), "did not find expected key")
 	})
 
 	t.Run("unsupported_boolean_literal", func(t *testing.T) {
@@ -1802,8 +1802,8 @@ foo: 1
 			Boolean bool `yaml:"boolean"`
 		}
 		_, err := LoadSrc[TestConfig]("boolean: yes")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
-		require.Equal(t, `at 1:10: "boolean" (TestConfig.Boolean): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
+		assert.Equal(t, `at 1:10: "boolean" (TestConfig.Boolean): `+
 			yamagiconf.ErrYAMLBadBoolLiteral.Error(), err.Error())
 	})
 
@@ -1812,8 +1812,8 @@ foo: 1
 			Booleans []bool `yaml:"booleans"`
 		}
 		_, err := LoadSrc[TestConfig]("booleans:\n  - false\n  - no")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
-		require.Equal(t, `at 3:5: "booleans" (TestConfig.Booleans[1]): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadBoolLiteral)
+		assert.Equal(t, `at 3:5: "booleans" (TestConfig.Booleans[1]): `+
 			yamagiconf.ErrYAMLBadBoolLiteral.Error(), err.Error())
 	})
 
@@ -1822,8 +1822,8 @@ foo: 1
 			Nullable *bool `yaml:"nullable"`
 		}
 		_, err := LoadSrc[TestConfig]("\nnullable: ~")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 
@@ -1832,8 +1832,8 @@ foo: 1
 			Map map[*string]string `yaml:"map"`
 		}
 		_, err := LoadSrc[TestConfig]("map:\n  ~: string")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:3: "map" (TestConfig.Map["~"]): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:3: "map" (TestConfig.Map["~"]): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 
@@ -1842,8 +1842,8 @@ foo: 1
 			Map map[string]*string `yaml:"map"`
 		}
 		_, err := LoadSrc[TestConfig]("map:\n  notok: ~")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:10: "map" (TestConfig.Map["notok"]): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:10: "map" (TestConfig.Map["notok"]): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 
@@ -1852,8 +1852,8 @@ foo: 1
 			Slice []*string `yaml:"slice"`
 		}
 		_, err := LoadSrc[TestConfig]("slice:\n  - ~")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:5: "slice" (TestConfig.Slice[0]): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:5: "slice" (TestConfig.Slice[0]): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 
@@ -1862,8 +1862,8 @@ foo: 1
 			Nullable *bool `yaml:"nullable"`
 		}
 		_, err := LoadSrc[TestConfig]("\nnullable: Null")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 
@@ -1872,8 +1872,8 @@ foo: 1
 			Nullable *bool `yaml:"nullable"`
 		}
 		_, err := LoadSrc[TestConfig]("\nnullable: NULL")
-		require.ErrorIs(t, err, yamagiconf.ErrYAMLBadNullLiteral)
-		require.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
+		assert.IsError(t, err, yamagiconf.ErrYAMLBadNullLiteral)
+		assert.Equal(t, `at 2:11: "nullable" (TestConfig.Nullable): `+
 			`must be null, any other variants of null are not supported`, err.Error())
 	})
 }
@@ -1908,14 +1908,14 @@ container:
     - null
 `)
 		valid := ValidatedString("valid")
-		require.NoError(t, err)
-		require.Equal(t, TestConfig{Container: Container{
+		assert.NoError(t, err)
+		assert.Equal(t, TestConfig{Container: Container{
 			Str:       "ok",
 			Slice:     []ValidatedString{"valid", "valid"},
 			SlicePtr:  []*ValidatedString{&valid, &valid},
 			NoYAMLStr: "noyaml_ok",
 		}}, *c)
-		require.NoError(t, yamagiconf.Validate(*c))
+		assert.NoError(t, yamagiconf.Validate(*c))
 	})
 
 	t.Run("required_tag_error", func(t *testing.T) {
@@ -1931,14 +1931,14 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidationTag)
+		assert.Equal(t,
 			`at 3:17: "required-str" violates validation rule: "required"`,
 			err.Error())
 		validateErr := yamagiconf.Validate(
 			TestConfig{Container: Container{Str: ""}},
 		)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at 3:17: "required-str"`, "at TestConfig.Container.Str:"))
 	})
 
@@ -1956,13 +1956,13 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t,
 			`at 6:7: at TestConfig.Container.Slice[1]: `+
 				`validation: is not 'valid'`,
 			err.Error())
 		validateErr := yamagiconf.Validate(*c)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at 6:7: at TestConfig.Container.Slice[1]:`,
 			`at TestConfig.Container.Slice[1]:`))
 	})
@@ -1981,13 +1981,13 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t,
 			`at 9:7: at TestConfig.Container.SlicePtr[1]: `+
 				`validation: is not 'valid'`,
 			err.Error())
 		validateErr := yamagiconf.Validate(*c)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at 9:7: at TestConfig.Container.SlicePtr[1]:`,
 			`at TestConfig.Container.SlicePtr[1]:`))
 	})
@@ -2007,13 +2007,13 @@ container:
     - valid: valid
       invalid: valid
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t,
 			`at 12:7: at TestConfig.Container.ArrayMapValVal[0]: `+
 				`validation: is not 'valid'`,
 			err.Error())
 		validateErr := yamagiconf.Validate(*c)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at 12:7: at TestConfig.Container.ArrayMapValVal[0]:`,
 			`at TestConfig.Container.ArrayMapValVal[0]:`))
 	})
@@ -2032,13 +2032,13 @@ container:
   array-map-val-val:
     - valid: invalid
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t,
 			`at 11:14: at TestConfig.Container.ArrayMapValVal[0][valid]: `+
 				`validation: is not 'valid'`,
 			err.Error())
 		validateErr := yamagiconf.Validate(*c)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at 11:14: at TestConfig.Container.ArrayMapValVal[0][valid]:`,
 			`at TestConfig.Container.ArrayMapValVal[0][valid]:`))
 	})
@@ -2056,14 +2056,14 @@ container:
   array-map-val-val:
     - null
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrValidationTag)
+		assert.Equal(t,
 			`at TestConfig.Container.NoYAMLStr: violates validation rule: "required"`,
 			err.Error())
 		validateErr := yamagiconf.Validate(
 			TestConfig{Container: Container{Str: ""}},
 		)
-		require.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
+		assert.NoError(t, CompareErrMsgWithPrefix(err, validateErr,
 			`at TestConfig.Container.NoYAMLStr:`, "at TestConfig.Container.Str:"))
 	})
 }
@@ -2081,10 +2081,10 @@ func TestValidationTagIncompatibleFieldType(t *testing.T) {
 		Host customURL `yaml:"host" validate:"url"`
 	}
 	_, err := LoadSrc[Config](`host: https://localhost:8080/path`)
-	require.ErrorIs(t, err, yamagiconf.ErrValidationTag)
+	assert.IsError(t, err, yamagiconf.ErrValidationTag)
 
 	validateErr := yamagiconf.Validate(Config{})
-	require.ErrorIs(t, validateErr, yamagiconf.ErrValidationTag)
+	assert.IsError(t, validateErr, yamagiconf.ErrValidationTag)
 }
 
 type TestConfWithValid struct {
@@ -2155,8 +2155,8 @@ container:
   map:
     valid: valid
 `)
-		require.NoError(t, err)
-		require.Equal(t, TestConfWithValid{
+		assert.NoError(t, err)
+		assert.Equal(t, TestConfWithValid{
 			Foo: "a",
 			Bar: "b",
 			Container: ContainerStruct{
@@ -2184,8 +2184,8 @@ container:
   slice: null
   map: null
 `)
-		require.NoError(t, err)
-		require.Equal(t, TestConfWithValid{
+		assert.NoError(t, err)
+		assert.Equal(t, TestConfWithValid{
 			Foo: "a",
 			Bar: "b",
 			Container: ContainerStruct{
@@ -2210,9 +2210,9 @@ container:
   map:
     valid: valid
 `)
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		assert.IsError(t, err, yamagiconf.ErrValidation)
 		errMsg := err.Error()
-		require.Equal(t, "at 2:1: at TestConfWithValid: validation: "+
+		assert.Equal(t, "at 2:1: at TestConfWithValid: validation: "+
 			"foo must not be empty", errMsg)
 	})
 
@@ -2231,9 +2231,9 @@ container:
     valid: valid
 `)
 
-		require.Error(t, err)
+		assert.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, "at 5:21: at TestConfWithValid.Container.ValidatedString: "+
+		assert.Equal(t, "at 5:21: at TestConfWithValid.Container.ValidatedString: "+
 			"validation: is not 'valid'", errMsg)
 	})
 
@@ -2253,9 +2253,9 @@ container:
     valid: valid
 `)
 
-		require.Error(t, err)
+		assert.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, "at 11:7: at TestConfWithValid.Container.Slice[1]: "+
+		assert.Equal(t, "at 11:7: at TestConfWithValid.Container.Slice[1]: "+
 			"validation: is not 'valid'", errMsg)
 	})
 
@@ -2276,9 +2276,9 @@ container:
     invalid: valid
 `)
 
-		require.Error(t, err)
+		assert.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, "at 14:5: at TestConfWithValid.Container.Map: "+
+		assert.Equal(t, "at 14:5: at TestConfWithValid.Container.Map: "+
 			"validation: is not 'valid'", errMsg)
 	})
 
@@ -2297,9 +2297,9 @@ container:
   map:
     valid: invalid
 `)
-		require.Error(t, err)
+		assert.Error(t, err)
 		errMsg := err.Error()
-		require.Equal(t, "at 13:12: at TestConfWithValid.Container.Map[valid]: "+
+		assert.Equal(t, "at 13:12: at TestConfWithValid.Container.Map[valid]: "+
 			"validation: is not 'valid'", errMsg)
 	})
 }
@@ -2322,21 +2322,21 @@ func TestValidatorMapNonStringKey(t *testing.T) {
 
 	t.Run("ok", func(t *testing.T) {
 		c, err := LoadSrc[Config]("map:\n  1: valid\n")
-		require.NoError(t, err)
-		require.Equal(t, ValidatedString("valid"), c.Map[1])
+		assert.NoError(t, err)
+		assert.Equal(t, ValidatedString("valid"), c.Map[1])
 	})
 
 	t.Run("error_in_value", func(t *testing.T) {
 		_, err := LoadSrc[Config]("map:\n  1: invalid\n")
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t, "at 2:6: at Config.Map[1]: validation: is not 'valid'",
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t, "at 2:6: at Config.Map[1]: validation: is not 'valid'",
 			err.Error())
 	})
 
 	t.Run("error_in_key", func(t *testing.T) {
 		_, err := LoadSrc[Config]("map:\n  -1: valid\n")
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t, "at 2:3: at Config.Map: validation: must not be negative",
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t, "at 2:3: at Config.Map: validation: must not be negative",
 			err.Error())
 	})
 
@@ -2347,8 +2347,8 @@ func TestValidatorMapNonStringKey(t *testing.T) {
 			Map map[uint16]ValidatedString `yaml:"map"`
 		}
 		_, err := LoadSrc[Config]("map:\n  7: invalid\n")
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t, "at 2:6: at Config.Map[7]: validation: is not 'valid'",
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t, "at 2:6: at Config.Map[7]: validation: is not 'valid'",
 			err.Error())
 	})
 
@@ -2357,8 +2357,8 @@ func TestValidatorMapNonStringKey(t *testing.T) {
 			Map map[bool]ValidatedString `yaml:"map"`
 		}
 		_, err := LoadSrc[Config]("map:\n  true: invalid\n")
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t, "at 2:9: at Config.Map[true]: validation: is not 'valid'",
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t, "at 2:9: at Config.Map[true]: validation: is not 'valid'",
 			err.Error())
 	})
 
@@ -2367,8 +2367,8 @@ func TestValidatorMapNonStringKey(t *testing.T) {
 			Map map[float64]ValidatedString `yaml:"map"`
 		}
 		_, err := LoadSrc[Config]("map:\n  3.14: invalid\n")
-		require.ErrorIs(t, err, yamagiconf.ErrValidation)
-		require.Equal(t, "at 2:9: at Config.Map[3.14]: validation: is not 'valid'",
+		assert.IsError(t, err, yamagiconf.ErrValidation)
+		assert.Equal(t, "at 2:9: at Config.Map[3.14]: validation: is not 'valid'",
 			err.Error())
 	})
 }
@@ -2387,9 +2387,9 @@ func TestLoadEnvVarInEmbedded(t *testing.T) {
 name: foo
 secret: yaml_val
 `)
-	require.NoError(t, err)
-	require.Equal(t, "from_env", c.Secret)
-	require.Equal(t, "foo", c.Name)
+	assert.NoError(t, err)
+	assert.Equal(t, "from_env", c.Secret)
+	assert.Equal(t, "foo", c.Name)
 }
 
 func TestLoadEnvVarInArray(t *testing.T) {
@@ -2410,8 +2410,8 @@ items:
   - name: bar
     secret: yaml_val
 `)
-		require.NoError(t, err)
-		require.Equal(t, [2]Item{
+		assert.NoError(t, err)
+		assert.Equal(t, [2]Item{
 			{Name: "foo", Secret: "from_env"},
 			{Name: "bar", Secret: "from_env"},
 		}, c.Items)
@@ -2425,8 +2425,8 @@ items:
   - name: bar
     secret: yaml_val
 `)
-		require.NoError(t, err)
-		require.Equal(t, [2]Item{
+		assert.NoError(t, err)
+		assert.Equal(t, [2]Item{
 			{Name: "foo", Secret: "yaml_val"},
 			{Name: "bar", Secret: "yaml_val"},
 		}, c.Items)
@@ -2628,72 +2628,72 @@ map-2d:
 unm-text: x
 ptr-unm-text: null
 `)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	require.Equal(t, false, c.BoolFalse)
-	require.Equal(t, true, c.BoolTrue)
-	require.Equal(t, "test text", c.String)
-	require.Equal(t, float32(3.14), c.Float32)
-	require.Equal(t, float64(3.1415), c.Float64)
-	require.Equal(t, int8(-1), c.Int8)
-	require.Equal(t, uint8(1), c.Uint8)
-	require.Equal(t, int16(-1), c.Int16)
-	require.Equal(t, uint16(1), c.Uint16)
-	require.Equal(t, int32(-1), c.Int32)
-	require.Equal(t, uint32(1), c.Uint32)
-	require.Equal(t, int64(-1), c.Int64)
-	require.Equal(t, uint64(1), c.Uint64)
-	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
-	require.Equal(t, 30*time.Minute, c.Duration)
+	assert.Equal(t, false, c.BoolFalse)
+	assert.Equal(t, true, c.BoolTrue)
+	assert.Equal(t, "test text", c.String)
+	assert.Equal(t, float32(3.14), c.Float32)
+	assert.Equal(t, float64(3.1415), c.Float64)
+	assert.Equal(t, int8(-1), c.Int8)
+	assert.Equal(t, uint8(1), c.Uint8)
+	assert.Equal(t, int16(-1), c.Int16)
+	assert.Equal(t, uint16(1), c.Uint16)
+	assert.Equal(t, int32(-1), c.Int32)
+	assert.Equal(t, uint32(1), c.Uint32)
+	assert.Equal(t, int64(-1), c.Int64)
+	assert.Equal(t, uint64(1), c.Uint64)
+	assert.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), c.Time)
+	assert.Equal(t, 30*time.Minute, c.Duration)
 
-	require.Equal(t, false, *c.PtrBoolFalse)
-	require.Equal(t, true, *c.PtrBoolTrue)
-	require.Equal(t, "test text", *c.PtrString)
-	require.Equal(t, float32(3.14), *c.PtrFloat32)
-	require.Equal(t, float64(3.1415), *c.PtrFloat64)
-	require.Equal(t, int8(-1), *c.PtrInt8)
-	require.Equal(t, uint8(1), *c.PtrUint8)
-	require.Equal(t, int16(-1), *c.PtrInt16)
-	require.Equal(t, uint16(1), *c.PtrUint16)
-	require.Equal(t, int32(-1), *c.PtrInt32)
-	require.Equal(t, uint32(1), *c.PtrUint32)
-	require.Equal(t, int64(-1), *c.PtrInt64)
-	require.Equal(t, uint64(1), *c.PtrUint64)
-	require.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), *c.PtrTime)
-	require.Equal(t, 12*time.Second, *c.PtrDuration)
+	assert.Equal(t, false, *c.PtrBoolFalse)
+	assert.Equal(t, true, *c.PtrBoolTrue)
+	assert.Equal(t, "test text", *c.PtrString)
+	assert.Equal(t, float32(3.14), *c.PtrFloat32)
+	assert.Equal(t, float64(3.1415), *c.PtrFloat64)
+	assert.Equal(t, int8(-1), *c.PtrInt8)
+	assert.Equal(t, uint8(1), *c.PtrUint8)
+	assert.Equal(t, int16(-1), *c.PtrInt16)
+	assert.Equal(t, uint16(1), *c.PtrUint16)
+	assert.Equal(t, int32(-1), *c.PtrInt32)
+	assert.Equal(t, uint32(1), *c.PtrUint32)
+	assert.Equal(t, int64(-1), *c.PtrInt64)
+	assert.Equal(t, uint64(1), *c.PtrUint64)
+	assert.Equal(t, time.Date(2000, 10, 10, 10, 10, 10, 0, time.UTC), *c.PtrTime)
+	assert.Equal(t, 12*time.Second, *c.PtrDuration)
 
-	require.Nil(t, c.PtrBoolNull)
-	require.Nil(t, c.PtrStringNull)
-	require.Nil(t, c.PtrFloat32Null)
-	require.Nil(t, c.PtrFloat64Null)
-	require.Nil(t, c.PtrInt8Null)
-	require.Nil(t, c.PtrUint8Null)
-	require.Nil(t, c.PtrInt16Null)
-	require.Nil(t, c.PtrUint16Null)
-	require.Nil(t, c.PtrInt32Null)
-	require.Nil(t, c.PtrUint32Null)
-	require.Nil(t, c.PtrInt64Null)
-	require.Nil(t, c.PtrUint64Null)
-	require.Nil(t, c.PtrTimeNull)
-	require.Nil(t, c.PtrDurationNull)
+	assert.Zero(t, c.PtrBoolNull)
+	assert.Zero(t, c.PtrStringNull)
+	assert.Zero(t, c.PtrFloat32Null)
+	assert.Zero(t, c.PtrFloat64Null)
+	assert.Zero(t, c.PtrInt8Null)
+	assert.Zero(t, c.PtrUint8Null)
+	assert.Zero(t, c.PtrInt16Null)
+	assert.Zero(t, c.PtrUint16Null)
+	assert.Zero(t, c.PtrInt32Null)
+	assert.Zero(t, c.PtrUint32Null)
+	assert.Zero(t, c.PtrInt64Null)
+	assert.Zero(t, c.PtrUint64Null)
+	assert.Zero(t, c.PtrTimeNull)
+	assert.Zero(t, c.PtrDurationNull)
 
-	require.Equal(t, Foo{Foo: "foo"}, c.Foo)
-	require.Equal(t, map[string]Foo{"key": {Foo: "fuzz"}}, c.MapFoo)
-	require.Equal(t, map[string]*Foo{
+	assert.Equal(t, Foo{Foo: "foo"}, c.Foo)
+	assert.Equal(t, map[string]Foo{"key": {Foo: "fuzz"}}, c.MapFoo)
+	assert.Equal(t, map[string]*Foo{
 		"bar":  {Foo: "fuzz"},
 		"bazz": nil,
 	}, c.MapPtrFoo)
-	require.Equal(t, []Foo{{Foo: "fuzz"}, {Foo: "fuzz"}}, c.SliceFoo)
-	require.Equal(t, [1]Foo{{Foo: "fuzz"}}, c.ArrayFoo)
-	require.Equal(t, Map2D{
+	assert.Equal(t, []Foo{{Foo: "fuzz"}, {Foo: "fuzz"}}, c.SliceFoo)
+	assert.Equal(t, [1]Foo{{Foo: "fuzz"}}, c.ArrayFoo)
+	assert.Equal(t, Map2D{
 		"foo":  {"bar": "bazz", "muzz": "tazz"},
 		"kraz": {"fraz": "sazz"},
 	}, c.Map2D)
-	require.Equal(t, "ut", c.UnmarshalerText.Str)
-	require.Equal(t, "ptr_ut", c.PtrUnmarshalerText.Str)
+	assert.Equal(t, "ut", c.UnmarshalerText.Str)
+	assert.Equal(t, "ptr_ut", c.PtrUnmarshalerText.Str)
 
-	require.Equal(t, c.NoYAMLStr, "test_noyaml")
-	require.Equal(t, c.NoYAMLStr2, "test_noyaml")
+	assert.Equal(t, c.NoYAMLStr, "test_noyaml")
+	assert.Equal(t, c.NoYAMLStr2, "test_noyaml")
 }
 
 func TestLoadEnvVarNoOverwrite(t *testing.T) {
@@ -2795,56 +2795,56 @@ ptr-uint64-null: null
 ptr-time-null: null
 ptr-duration-null: null
 `)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	require.Equal(t, true, c.BoolFalse)
-	require.Equal(t, false, c.BoolTrue)
-	require.Equal(t, "", c.String)
-	require.Equal(t, float32(0), c.Float32)
-	require.Equal(t, float64(0), c.Float64)
-	require.Equal(t, int8(0), c.Int8)
-	require.Equal(t, uint8(0), c.Uint8)
-	require.Equal(t, int16(0), c.Int16)
-	require.Equal(t, uint16(0), c.Uint16)
-	require.Equal(t, int32(0), c.Int32)
-	require.Equal(t, uint32(0), c.Uint32)
-	require.Equal(t, int64(0), c.Int64)
-	require.Equal(t, uint64(0), c.Uint64)
-	require.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), c.Time)
-	require.Equal(t, 10*time.Second, c.Duration)
+	assert.Equal(t, true, c.BoolFalse)
+	assert.Equal(t, false, c.BoolTrue)
+	assert.Equal(t, "", c.String)
+	assert.Equal(t, float32(0), c.Float32)
+	assert.Equal(t, float64(0), c.Float64)
+	assert.Equal(t, int8(0), c.Int8)
+	assert.Equal(t, uint8(0), c.Uint8)
+	assert.Equal(t, int16(0), c.Int16)
+	assert.Equal(t, uint16(0), c.Uint16)
+	assert.Equal(t, int32(0), c.Int32)
+	assert.Equal(t, uint32(0), c.Uint32)
+	assert.Equal(t, int64(0), c.Int64)
+	assert.Equal(t, uint64(0), c.Uint64)
+	assert.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), c.Time)
+	assert.Equal(t, 10*time.Second, c.Duration)
 
-	require.Equal(t, true, *c.PtrBoolFalse)
-	require.Equal(t, false, *c.PtrBoolTrue)
-	require.Equal(t, "", *c.PtrString)
-	require.Equal(t, float32(0), *c.PtrFloat32)
-	require.Equal(t, float64(0), *c.PtrFloat64)
-	require.Equal(t, int8(0), *c.PtrInt8)
-	require.Equal(t, uint8(0), *c.PtrUint8)
-	require.Equal(t, int16(0), *c.PtrInt16)
-	require.Equal(t, uint16(0), *c.PtrUint16)
-	require.Equal(t, int32(0), *c.PtrInt32)
-	require.Equal(t, uint32(0), *c.PtrUint32)
-	require.Equal(t, int64(0), *c.PtrInt64)
-	require.Equal(t, uint64(0), *c.PtrUint64)
-	require.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), *c.PtrTime)
-	require.Equal(t, 10*time.Second, *c.PtrDuration)
+	assert.Equal(t, true, *c.PtrBoolFalse)
+	assert.Equal(t, false, *c.PtrBoolTrue)
+	assert.Equal(t, "", *c.PtrString)
+	assert.Equal(t, float32(0), *c.PtrFloat32)
+	assert.Equal(t, float64(0), *c.PtrFloat64)
+	assert.Equal(t, int8(0), *c.PtrInt8)
+	assert.Equal(t, uint8(0), *c.PtrUint8)
+	assert.Equal(t, int16(0), *c.PtrInt16)
+	assert.Equal(t, uint16(0), *c.PtrUint16)
+	assert.Equal(t, int32(0), *c.PtrInt32)
+	assert.Equal(t, uint32(0), *c.PtrUint32)
+	assert.Equal(t, int64(0), *c.PtrInt64)
+	assert.Equal(t, uint64(0), *c.PtrUint64)
+	assert.Equal(t, time.Date(2024, 1, 1, 1, 1, 1, 0, time.UTC), *c.PtrTime)
+	assert.Equal(t, 10*time.Second, *c.PtrDuration)
 
-	require.Nil(t, c.PtrBoolNull)
-	require.Nil(t, c.PtrStringNull)
-	require.Nil(t, c.PtrFloat32Null)
-	require.Nil(t, c.PtrFloat64Null)
-	require.Nil(t, c.PtrInt8Null)
-	require.Nil(t, c.PtrUint8Null)
-	require.Nil(t, c.PtrInt16Null)
-	require.Nil(t, c.PtrUint16Null)
-	require.Nil(t, c.PtrInt32Null)
-	require.Nil(t, c.PtrUint32Null)
-	require.Nil(t, c.PtrInt64Null)
-	require.Nil(t, c.PtrUint64Null)
-	require.Nil(t, c.PtrTimeNull)
-	require.Nil(t, c.PtrDurationNull)
+	assert.Zero(t, c.PtrBoolNull)
+	assert.Zero(t, c.PtrStringNull)
+	assert.Zero(t, c.PtrFloat32Null)
+	assert.Zero(t, c.PtrFloat64Null)
+	assert.Zero(t, c.PtrInt8Null)
+	assert.Zero(t, c.PtrUint8Null)
+	assert.Zero(t, c.PtrInt16Null)
+	assert.Zero(t, c.PtrUint16Null)
+	assert.Zero(t, c.PtrInt32Null)
+	assert.Zero(t, c.PtrUint32Null)
+	assert.Zero(t, c.PtrInt64Null)
+	assert.Zero(t, c.PtrUint64Null)
+	assert.Zero(t, c.PtrTimeNull)
+	assert.Zero(t, c.PtrDurationNull)
 
-	require.Zero(t, c.NoYAMLStr)
+	assert.Zero(t, c.NoYAMLStr)
 }
 
 // primitiveTextUnmarshaler is a string-kinded type that implements
@@ -2868,9 +2868,9 @@ func TestLoadEnvVarPrimitiveTextUnmarshaler(t *testing.T) {
 	}
 	t.Setenv("PRIM_TEXT_UNMARSH", "raw")
 	c, err := LoadSrc[TestConfig]("value: yaml_val")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	// UnmarshalText should have been called, producing "transformed:raw".
-	require.Equal(t, primitiveTextUnmarshaler("transformed:raw"), c.Value)
+	assert.Equal(t, primitiveTextUnmarshaler("transformed:raw"), c.Value)
 }
 
 func TestLoadErrInvalidEnvVar(t *testing.T) {
@@ -2880,8 +2880,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("BOOL", "yes")
 		_, err := LoadSrc[TestConfig](`bool: false`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t,
 			"at TestConfig.Bool: invalid env var BOOL: expected bool",
 			err.Error())
 	})
@@ -2892,8 +2892,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("FLOAT_32", "not_a_float32")
 		_, err := LoadSrc[TestConfig](`float32: 3.14`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Float32: invalid env var FLOAT_32: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Float32: invalid env var FLOAT_32: "+
 			"expected float32: "+
 			"strconv.ParseFloat: parsing \"not_a_float32\": invalid syntax", err.Error())
 	})
@@ -2904,8 +2904,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("FLOAT_64", "not_a_float64")
 		_, err := LoadSrc[TestConfig](`float64: 3.14`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Float64: invalid env var FLOAT_64: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Float64: invalid env var FLOAT_64: "+
 			"expected float64: "+
 			"strconv.ParseFloat: parsing \"not_a_float64\": invalid syntax", err.Error())
 	})
@@ -2916,8 +2916,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("INT_8", "257")
 		_, err := LoadSrc[TestConfig](`int8: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Int8: invalid env var INT_8: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Int8: invalid env var INT_8: "+
 			"expected int8: "+
 			"strconv.ParseInt: parsing \"257\": value out of range", err.Error())
 	})
@@ -2928,8 +2928,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("UINT_8", "-1")
 		_, err := LoadSrc[TestConfig](`uint8: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Uint8: invalid env var UINT_8: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Uint8: invalid env var UINT_8: "+
 			"expected uint8: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
@@ -2940,8 +2940,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("INT_16", "65536")
 		_, err := LoadSrc[TestConfig](`int16: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Int16: invalid env var INT_16: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Int16: invalid env var INT_16: "+
 			"expected int16: "+
 			"strconv.ParseInt: parsing \"65536\": value out of range", err.Error())
 	})
@@ -2952,8 +2952,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("UINT_16", "-1")
 		_, err := LoadSrc[TestConfig](`uint16: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Uint16: invalid env var UINT_16: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Uint16: invalid env var UINT_16: "+
 			"expected uint16: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
@@ -2964,8 +2964,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("INT_32", "4294967296")
 		_, err := LoadSrc[TestConfig](`int32: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Int32: invalid env var INT_32: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Int32: invalid env var INT_32: "+
 			"expected int32: "+
 			"strconv.ParseInt: parsing \"4294967296\": value out of range", err.Error())
 	})
@@ -2976,8 +2976,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("UINT_32", "-1")
 		_, err := LoadSrc[TestConfig](`uint32: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Uint32: invalid env var UINT_32: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Uint32: invalid env var UINT_32: "+
 			"expected uint32: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
@@ -2989,8 +2989,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 
 		t.Setenv("INT_64", "9223372036854775808")
 		_, err := LoadSrc[TestConfig](`int64: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Int64: invalid env var INT_64: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Int64: invalid env var INT_64: "+
 			"expected int64: "+
 			"strconv.ParseInt: parsing \"9223372036854775808\": value out of range",
 			err.Error())
@@ -3002,8 +3002,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("UINT_64", "-1")
 		_, err := LoadSrc[TestConfig](`uint64: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.Uint64: invalid env var UINT_64: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.Uint64: invalid env var UINT_64: "+
 			"expected uint64: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
@@ -3014,8 +3014,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("PTR_UINT_64", "-1")
 		_, err := LoadSrc[TestConfig](`uint64: 0`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t, "at TestConfig.PtrUint64: invalid env var PTR_UINT_64: "+
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t, "at TestConfig.PtrUint64: invalid env var PTR_UINT_64: "+
 			"expected uint64: "+
 			"strconv.ParseUint: parsing \"-1\": invalid syntax", err.Error())
 	})
@@ -3028,8 +3028,8 @@ func TestLoadErrInvalidEnvVar(t *testing.T) {
 		}
 		t.Setenv("BOOL", "no")
 		_, err := LoadSrc[TestConfig](`x: x`)
-		require.ErrorIs(t, err, yamagiconf.ErrEnvInvalidVar)
-		require.Equal(t,
+		assert.IsError(t, err, yamagiconf.ErrEnvInvalidVar)
+		assert.Equal(t,
 			"at TestConfig.Bool: invalid env var BOOL: expected bool",
 			err.Error())
 	})
@@ -3072,10 +3072,10 @@ func TestLoadTextUnmarshaler(t *testing.T) {
 		U2: TextUnmarshalerCopyRcv{Str: &u2str},
 	}
 	err := yamagiconf.Load("u1: t1\nu2: t2\nu1_ptr: t3", &c)
-	require.NoError(t, err)
-	require.Equal(t, "t1", c.U1.Str)
-	require.Equal(t, "t2", *c.U2.Str)
-	require.Equal(t, "t3", c.U1Ptr.Str)
+	assert.NoError(t, err)
+	assert.Equal(t, "t1", c.U1.Str)
+	assert.Equal(t, "t2", *c.U2.Str)
+	assert.Equal(t, "t3", c.U1Ptr.Str)
 }
 
 // CompareErrMsgWithPrefix compares the suffixes of error messages of a and b,
@@ -3102,33 +3102,33 @@ func CompareErrMsgWithPrefix(a, b error, aPrefix, bPrefix string) error {
 func TestCompareErrMsgWithPrefix(t *testing.T) {
 	a, b := errors.New("foo bar bazz"), errors.New("fazz bar bazz")
 	t.Run("ok", func(t *testing.T) {
-		require.NoError(t, CompareErrMsgWithPrefix(a, b, "foo", "fazz"))
+		assert.NoError(t, CompareErrMsgWithPrefix(a, b, "foo", "fazz"))
 	})
 	t.Run("a_is_nil", func(t *testing.T) {
 		err := CompareErrMsgWithPrefix(nil, b, "foo", "fazz")
-		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "both a "))
+		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "both a "))
 	})
 	t.Run("b_is_nil", func(t *testing.T) {
 		err := CompareErrMsgWithPrefix(a, nil, "foo", "fazz")
-		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "both a "))
+		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "both a "))
 	})
 	t.Run("a_prefix_mismatch", func(t *testing.T) {
 		err := CompareErrMsgWithPrefix(a, b, "X", "fazz")
-		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "a ("))
+		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "a ("))
 	})
 	t.Run("b_prefix_mismatch", func(t *testing.T) {
 		err := CompareErrMsgWithPrefix(a, b, "foo", "X")
-		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "b ("))
+		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "b ("))
 	})
 	t.Run("suffix_mismatch", func(t *testing.T) {
 		a, b := errors.New("foo bar bazz"), errors.New("fazz bar baXX")
 		err := CompareErrMsgWithPrefix(a, b, "foo", "fazz")
-		require.Error(t, err)
-		require.True(t, strings.HasPrefix(err.Error(), "suffixes don't match"))
+		assert.Error(t, err)
+		assert.True(t, strings.HasPrefix(err.Error(), "suffixes don't match"))
 	})
 }
 
@@ -3143,7 +3143,7 @@ func TestValidatorPointerReceiver(t *testing.T) {
 	ErrValidateWithPointerReceiver := errors.New("this is fine")
 	v := ValidateWithPointerReceiver{err: ErrValidateWithPointerReceiver}
 	err := yamagiconf.Validate(v)
-	require.ErrorIs(t, err, v.err)
+	assert.IsError(t, err, v.err)
 }
 
 type (
@@ -3170,25 +3170,25 @@ var (
 // because normally types like `int` and `any` are a forbidden data type.
 func TestForbiddenTypeImplementsUnmarshaler(t *testing.T) {
 	t.Run("IntImplsUnmarshalers", func(t *testing.T) {
-		require.NoError(t, yamagiconf.ValidateType[struct {
+		assert.NoError(t, yamagiconf.ValidateType[struct {
 			Un IntImplsUnmarshalers `yaml:"un"`
 		}]())
 	})
 
 	t.Run("IntImplsYAMLUnmarshaler", func(t *testing.T) {
-		require.NoError(t, yamagiconf.ValidateType[struct {
+		assert.NoError(t, yamagiconf.ValidateType[struct {
 			Un IntImplsYAMLUnmarshaler `yaml:"un"`
 		}]())
 	})
 
 	t.Run("AnySlcImplsTextUnmarshaler", func(t *testing.T) {
-		require.NoError(t, yamagiconf.ValidateType[struct {
+		assert.NoError(t, yamagiconf.ValidateType[struct {
 			Un AnySlcImplsTextUnmarshaler `yaml:"un"`
 		}]())
 	})
 
 	t.Run("AnySlcImplsYAMLUnmarshaler", func(t *testing.T) {
-		require.NoError(t, yamagiconf.ValidateType[struct {
+		assert.NoError(t, yamagiconf.ValidateType[struct {
 			Un AnySlcImplsYAMLUnmarshaler `yaml:"un"`
 		}]())
 	})
@@ -3207,8 +3207,8 @@ func TestTextUnmarshalerMap(t *testing.T) {
 	var v struct {
 		Map TextUnmarshalerMap `yaml:"map"`
 	}
-	require.NoError(t, yamagiconf.Load("map: valid", &v))
-	require.Equal(t, TextUnmarshalerMap{"valid": "valid"}, v.Map)
+	assert.NoError(t, yamagiconf.Load("map: valid", &v))
+	assert.Equal(t, TextUnmarshalerMap{"valid": "valid"}, v.Map)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshMap(t *testing.T) {
@@ -3216,7 +3216,7 @@ func TestErrYAMLNonStrOnTextUnmarshMap(t *testing.T) {
 		Map TextUnmarshalerMap `yaml:"map"`
 	}
 	err := yamagiconf.Load("map:\n  foo: bar", &v)
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+	assert.IsError(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
 type TextUnmarshalerSlice []ValidatedString
@@ -3232,8 +3232,8 @@ func TestTextUnmarshalerSlice(t *testing.T) {
 	var v struct {
 		Slice TextUnmarshalerSlice `yaml:"slice"`
 	}
-	require.NoError(t, yamagiconf.Load("slice: valid", &v))
-	require.Equal(t, TextUnmarshalerSlice{"valid"}, v.Slice)
+	assert.NoError(t, yamagiconf.Load("slice: valid", &v))
+	assert.Equal(t, TextUnmarshalerSlice{"valid"}, v.Slice)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshSlice(t *testing.T) {
@@ -3241,7 +3241,7 @@ func TestErrYAMLNonStrOnTextUnmarshSlice(t *testing.T) {
 		Slice TextUnmarshalerSlice `yaml:"slice"`
 	}
 	err := yamagiconf.Load("slice:\n  - valid\n  - valid", &v)
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+	assert.IsError(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
 type TextUnmarshalerArray2 [2]ValidatedString
@@ -3257,8 +3257,8 @@ func TestTextUnmarshalerArray2(t *testing.T) {
 	var v struct {
 		Array2 TextUnmarshalerArray2 `yaml:"array"`
 	}
-	require.NoError(t, yamagiconf.Load("array: valid", &v))
-	require.Equal(t, TextUnmarshalerArray2{"valid", "valid"}, v.Array2)
+	assert.NoError(t, yamagiconf.Load("array: valid", &v))
+	assert.Equal(t, TextUnmarshalerArray2{"valid", "valid"}, v.Array2)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshArray(t *testing.T) {
@@ -3266,7 +3266,7 @@ func TestErrYAMLNonStrOnTextUnmarshArray(t *testing.T) {
 		Slice TextUnmarshalerArray2 `yaml:"array"`
 	}
 	err := yamagiconf.Load("array:\n  - valid\n  - valid", &v)
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+	assert.IsError(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
 func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
@@ -3275,7 +3275,7 @@ func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
 		Slice  TextUnmarshalerArray2 `yaml:"alias"`
 	}
 	err := yamagiconf.Load("anchor: &a\n  - valid\n  - valid\nalias: *a", &v)
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
+	assert.IsError(t, err, yamagiconf.ErrYAMLNonStrOnTextUnmarsh)
 }
 
 // TestTextUnmarshalerScalarAlias tests that a scalar alias to a TextUnmarshaler
@@ -3286,9 +3286,9 @@ func TestTextUnmarshalerScalarAlias(t *testing.T) {
 		Alias TextUnmarshaler `yaml:"alias"`
 	}
 	err := yamagiconf.Load("base: &a text_value\nalias: *a", &v)
-	require.NoError(t, err)
-	require.Equal(t, "text_value", v.Base)
-	require.Equal(t, "text_value", v.Alias.Str)
+	assert.NoError(t, err)
+	assert.Equal(t, "text_value", v.Base)
+	assert.Equal(t, "text_value", v.Alias.Str)
 }
 
 // TestStructAlias tests that a struct-valued field accessed via alias is accepted.
@@ -3308,9 +3308,9 @@ default: &default
   port: 8080
 fallback: *default
 `, &c)
-	require.NoError(t, err)
-	require.Equal(t, "localhost", c.Fallback.Host)
-	require.Equal(t, uint16(8080), c.Fallback.Port)
+	assert.NoError(t, err)
+	assert.Equal(t, "localhost", c.Fallback.Host)
+	assert.Equal(t, uint16(8080), c.Fallback.Port)
 }
 
 // TestZeroValue tests whether no value in YAML results in zero Go value.
@@ -3403,16 +3403,18 @@ map-str-bool:
 container:
   string:
 `, &c)
-	require.NoError(t, err)
-	require.Zero(t, c.NoValue)
+	assert.NoError(t, err)
+	assert.Zero(t, c.NoValue)
 
-	require.Len(t, c.MapStrStr, 1)
-	require.Contains(t, c.MapStrStr, "key")
-	require.Zero(t, c.MapStrStr["key"])
+	assert.Equal(t, 1, len(c.MapStrStr))
+	_, ok := c.MapStrStr["key"]
+	assert.True(t, ok)
+	assert.Zero(t, c.MapStrStr["key"])
 
-	require.Len(t, c.MapStrBool, 1)
-	require.Contains(t, c.MapStrBool, "key")
-	require.Zero(t, c.MapStrBool["key"])
+	assert.Equal(t, 1, len(c.MapStrBool))
+	_, ok = c.MapStrBool["key"]
+	assert.True(t, ok)
+	assert.Zero(t, c.MapStrBool["key"])
 
-	require.Zero(t, c.Container)
+	assert.Zero(t, c.Container)
 }
