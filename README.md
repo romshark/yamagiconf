@@ -3,8 +3,8 @@
 <a href="https://pkg.go.dev/github.com/romshark/yamagiconf">
     <img src="https://godoc.org/github.com/romshark/yamagiconf?status.svg" alt="GoDoc">
 </a>
-<a href="https://goreportcard.com/report/github.com/romshark/yamagiconf">
-    <img src="https://goreportcard.com/badge/github.com/romshark/yamagiconf" alt="GoReportCard">
+<a href="https://github.com/romshark/yamagiconf/actions/workflows/golangci-lint.yml">
+    <img src="https://github.com/romshark/yamagiconf/actions/workflows/golangci-lint.yml/badge.svg" alt="golangci-lint">
 </a>
 <a href='https://coveralls.io/github/romshark/yamagiconf?branch=main'>
     <img src='https://coveralls.io/repos/github/romshark/yamagiconf/badge.svg?branch=main' alt='Coverage Status' />
