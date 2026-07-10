@@ -665,6 +665,13 @@ FOR_PATH:
 		if fieldName == "" {
 			break
 		}
+		// Deref: FieldByName panics on non-struct types.
+		for currentTp.Kind() == reflect.Pointer {
+			currentTp = currentTp.Elem()
+		}
+		if currentTp.Kind() != reflect.Struct {
+			break
+		}
 		f, _ := currentTp.FieldByName(fieldName)
 		yamlTag = getYAMLFieldName(f.Tag)
 		if yamlTag == "-" {

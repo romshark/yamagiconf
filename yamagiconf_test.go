@@ -2087,6 +2087,41 @@ func TestValidationTagIncompatibleFieldType(t *testing.T) {
 	assert.IsError(t, validateErr, yamagiconf.ErrValidationTag)
 }
 
+// TestValidationTagInPointerStruct verifies that a failing validate tag on a
+// field nested inside a pointer-to-struct is reported with its correct location.
+// Resolving the location must traverse pointer types in the validator namespace
+// instead of calling reflect.Type.FieldByName on a pointer (which panics).
+func TestValidationTagInPointerStruct(t *testing.T) {
+	t.Run("single_pointer", func(t *testing.T) {
+		type Inner struct {
+			Name string `yaml:"name" validate:"required"`
+		}
+		type Config struct {
+			Ptr *Inner `yaml:"ptr"`
+		}
+		_, err := LoadSrc[Config]("ptr:\n  name: ''\n")
+		assert.IsError(t, err, yamagiconf.ErrValidationTag)
+		assert.Equal(t, `at 2:9: "name" violates validation rule: "required"`,
+			err.Error())
+	})
+
+	t.Run("nested_pointers", func(t *testing.T) {
+		type Inner struct {
+			Name string `yaml:"name" validate:"required"`
+		}
+		type Mid struct {
+			Inner *Inner `yaml:"inner"`
+		}
+		type Config struct {
+			Mid *Mid `yaml:"mid"`
+		}
+		_, err := LoadSrc[Config]("mid:\n  inner:\n    name: ''\n")
+		assert.IsError(t, err, yamagiconf.ErrValidationTag)
+		assert.Equal(t, `at 3:11: "name" violates validation rule: "required"`,
+			err.Error())
+	})
+}
+
 type TestConfWithValid struct {
 	Foo       string          `yaml:"foo" validate:"required"`
 	Bar       string          `yaml:"bar"`
