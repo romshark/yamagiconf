@@ -21,7 +21,7 @@ If you hate [YAML](https://yaml.org/), and you're afraid of
 [YAML documents from hell](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell),
 and you can't stand complex, unexplorable and unintuitive configurations then yamagiconf is for you!
 
-🪄 It's magic because it uses [reflect](https://pkg.go.dev/reflect) to find recursively all
+🪄 It's magic because it uses [reflect](https://pkg.go.dev/reflect) to recursively find all
 values of types that implement `interface { Validate() error }` and calls them reporting
 an error annotated with line and column in the YAML file if necessary.
 
@@ -66,7 +66,7 @@ an error annotated with line and column in the YAML file if necessary.
 	- 🪄 If any type within your configuration struct implements the `Validate` interface,
 	  then its validation method will be called using reflection
 	  (doesn't apply to unexported fields which are invisible to `reflect`).
-	  If it returns an error - the error will be reported.
+	  If it returns an error — the error will be reported.
 	  Keeps your validation logic close to your configuration type definitions.
 	- Reports errors by `line:column` when possible.
 	- Supports [github.com/go-playground/validator](https://github.com/go-playground/validator)

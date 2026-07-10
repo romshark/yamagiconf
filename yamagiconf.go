@@ -135,7 +135,7 @@ func LoadFile[T any](yamlFilePath string, config *T, opts ...Option) error {
 }
 
 // Load reads and validates the configuration of type T from yamlSource.
-// Load behaves similar to LoadFile.
+// Load behaves similarly to LoadFile.
 func Load[T any, S string | []byte](yamlSource S, config *T, opts ...Option) error {
 	if config == nil {
 		return ErrConfigNil
@@ -229,9 +229,9 @@ func Load[T any, S string | []byte](yamlSource S, config *T, opts ...Option) err
 	return nil
 }
 
-// Validate behaves similar to Load and LoadFile just without parsing YAML
+// Validate behaves similarly to Load and LoadFile just without parsing YAML
 // and instead performing the same type and value checks on t.
-// Validate will obviously not report line:column error location.
+// Validate will not report line:column error location.
 // Validate first validates type T, then validates t according to
 // go-playground/validator struct tags, then recursively
 // invokes all Validate methods returning an error if any.
@@ -268,8 +268,8 @@ func runValidatorStruct(v *validator.Validate, s any) (err error) {
 	return v.Struct(s)
 }
 
-// asIface[I any] returns nil if v doesn't implement the Validator interface
-// neither as a copy- nor as a pointer receiver.
+// asIface[I any] returns nil if v doesn't implement the Validator interface,
+// either as a copy- or as a pointer receiver.
 func asIface[I any](v reflect.Value, allocateIfNecessary bool) (i I) {
 	if !v.IsValid() {
 		return i
@@ -322,7 +322,7 @@ func getConfigTypeName(t reflect.Type) string {
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
 // Assumes type of v was validated first using ValidateType.
-// If node != nil then assumes validateYAMLValues was ran first on it.
+// If node != nil then assumes validateYAMLValues was run first on it.
 func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) error {
 	tp := v.Type()
 
