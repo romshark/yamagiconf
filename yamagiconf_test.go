@@ -1567,6 +1567,41 @@ func TestLoadErrMissingConfig(t *testing.T) {
 	})
 }
 
+// TestLoadStructGivenNonMapping verifies that giving a struct-typed field a
+// non-mapping YAML node reports a missing-field error.
+func TestLoadStructGivenNonMapping(t *testing.T) {
+	t.Run("sequence", func(t *testing.T) {
+		type Config struct {
+			Sub struct {
+				A string `yaml:"a"`
+			} `yaml:"sub"`
+		}
+		// A struct given a sequence whose last item equals the field tag "a".
+		_, err := LoadSrc[Config]("sub:\n  - x\n  - a\n")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
+			`at Config.Sub.A (as "a"): missing field in config file`,
+			err.Error())
+	})
+
+	t.Run("mapping_value_tag_collision", func(t *testing.T) {
+		type Sub struct {
+			Foo string `yaml:"foo"`
+			A   string `yaml:"a"`
+		}
+		type Config struct {
+			Sub Sub `yaml:"sub"`
+		}
+		// The value of "foo" collides with the sibling field tag "a" as the last
+		// searched token; findContentNodeByTag must match keys only.
+		_, err := LoadSrc[Config]("sub:\n  foo: a\n")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMissingConfig)
+		assert.Equal(t,
+			`at Config.Sub.A (as "a"): missing field in config file`,
+			err.Error())
+	})
+}
+
 func TestLoadWithOptionalPresence(t *testing.T) {
 	type Config struct {
 		Present string `yaml:"present"`

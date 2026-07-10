@@ -1041,10 +1041,15 @@ func validateTypeImplementingIfaces(path string, implementer reflect.Type) error
 }
 
 func findContentNodeByTag(node *yaml.Node, yamlTag string) *yaml.Node {
-	// Find value node
-	for i, n := range node.Content {
-		if n.Value == yamlTag {
-			return node.Content[i+1] // The value node is the next node
+	if node.Kind != yaml.MappingNode {
+		// Only mapping nodes have key-value pairs to look up. A non-mapping node
+		// (e.g. a sequence given where a struct is expected) has no matching key.
+		return nil
+	}
+	// Mapping content is a flat list of key-value pairs; match keys only.
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == yamlTag {
+			return node.Content[i+1] // The value node follows the key.
 		}
 	}
 	return nil
