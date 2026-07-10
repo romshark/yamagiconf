@@ -1758,7 +1758,7 @@ func TestLoadErr(t *testing.T) {
 		// Using tabs is illegal
 		c, err := LoadSrc[TestConfig]("x:\n\ttabs: 'TABS'\n  spaces: 'SPACES'\n")
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
-		require.Contains(t, err.Error(), "line 2")
+		require.Contains(t, err.Error(), "L2.C1")
 		require.NotZero(t, c)
 	})
 
@@ -1793,7 +1793,7 @@ foo: 1
 `)
 		require.ErrorIs(t, err, yamagiconf.ErrYAMLMultidoc)
 		require.Contains(t, err.Error(), yamagiconf.ErrYAMLMultidoc.Error())
-		require.Contains(t, err.Error(), "line 4")
+		require.Contains(t, err.Error(), "L5.C1")
 		require.Contains(t, err.Error(), "did not find expected key")
 	})
 
@@ -3279,16 +3279,16 @@ func TestErrYAMLNonStrOnTextUnmarshArrayAlias(t *testing.T) {
 }
 
 // TestTextUnmarshalerScalarAlias tests that a scalar alias to a TextUnmarshaler
-// field passes validation (the alias target is a string). The YAML library
-// itself cannot construct a TextUnmarshaler from an alias, so it returns
-// ErrYAMLMalformed at decode time.
+// field is accepted and decoded from the alias target (a string).
 func TestTextUnmarshalerScalarAlias(t *testing.T) {
 	var v struct {
 		Base  string          `yaml:"base"`
 		Alias TextUnmarshaler `yaml:"alias"`
 	}
 	err := yamagiconf.Load("base: &a text_value\nalias: *a", &v)
-	require.ErrorIs(t, err, yamagiconf.ErrYAMLMalformed)
+	require.NoError(t, err)
+	require.Equal(t, "text_value", v.Base)
+	require.Equal(t, "text_value", v.Alias.Str)
 }
 
 // TestStructAlias tests that a struct-valued field accessed via alias is accepted.
