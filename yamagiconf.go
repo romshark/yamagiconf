@@ -403,7 +403,8 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 		} else {
 			for _, k := range mapKeys {
 				for i := 0; i < len(node.Content); i += 2 {
-					if k.String() != node.Content[i].Value {
+					// Not k.String(): it only yields the value for string kinds.
+					if fmt.Sprint(k.Interface()) != node.Content[i].Value {
 						continue
 					}
 					err := invokeValidateRecursively(path, k, node.Content[i])

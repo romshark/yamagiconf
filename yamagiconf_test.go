@@ -2304,6 +2304,75 @@ container:
 	})
 }
 
+type ValidatedInt int8
+
+func (v ValidatedInt) Validate() error {
+	if v < 0 {
+		return errors.New("must not be negative")
+	}
+	return nil
+}
+
+// TestValidatorMapNonStringKey ensures Validate methods are invoked for both the
+// keys and values of maps with a non-string key type.
+func TestValidatorMapNonStringKey(t *testing.T) {
+	type Config struct {
+		Map map[ValidatedInt]ValidatedString `yaml:"map"`
+	}
+
+	t.Run("ok", func(t *testing.T) {
+		c, err := LoadSrc[Config]("map:\n  1: valid\n")
+		require.NoError(t, err)
+		require.Equal(t, ValidatedString("valid"), c.Map[1])
+	})
+
+	t.Run("error_in_value", func(t *testing.T) {
+		_, err := LoadSrc[Config]("map:\n  1: invalid\n")
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t, "at 2:6: at Config.Map[1]: validation: is not 'valid'",
+			err.Error())
+	})
+
+	t.Run("error_in_key", func(t *testing.T) {
+		_, err := LoadSrc[Config]("map:\n  -1: valid\n")
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t, "at 2:3: at Config.Map: validation: must not be negative",
+			err.Error())
+	})
+
+	// Value validation must fire regardless of the (non-string) key kind,
+	// including kinds whose formatting differs from strings (bool, float).
+	t.Run("uint_key", func(t *testing.T) {
+		type Config struct {
+			Map map[uint16]ValidatedString `yaml:"map"`
+		}
+		_, err := LoadSrc[Config]("map:\n  7: invalid\n")
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t, "at 2:6: at Config.Map[7]: validation: is not 'valid'",
+			err.Error())
+	})
+
+	t.Run("bool_key", func(t *testing.T) {
+		type Config struct {
+			Map map[bool]ValidatedString `yaml:"map"`
+		}
+		_, err := LoadSrc[Config]("map:\n  true: invalid\n")
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t, "at 2:9: at Config.Map[true]: validation: is not 'valid'",
+			err.Error())
+	})
+
+	t.Run("float_key", func(t *testing.T) {
+		type Config struct {
+			Map map[float64]ValidatedString `yaml:"map"`
+		}
+		_, err := LoadSrc[Config]("map:\n  3.14: invalid\n")
+		require.ErrorIs(t, err, yamagiconf.ErrValidation)
+		require.Equal(t, "at 2:9: at Config.Map[3.14]: validation: is not 'valid'",
+			err.Error())
+	})
+}
+
 func TestLoadEnvVarInEmbedded(t *testing.T) {
 	type Base struct {
 		Secret string `yaml:"secret" env:"EMBED_SECRET"`
