@@ -1602,6 +1602,17 @@ func TestLoadStructGivenNonMapping(t *testing.T) {
 	})
 }
 
+// TestLoadMapGivenNonMapping verifies that giving a map-typed field a
+// non-mapping YAML node reports a malformed-YAML error.
+func TestLoadMapGivenNonMapping(t *testing.T) {
+	type Config struct {
+		M map[string]string `yaml:"m"`
+	}
+	// An odd-length sequence given where a map is expected.
+	_, err := LoadSrc[Config]("m:\n  - a\n  - b\n  - c\n")
+	assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+}
+
 func TestLoadWithOptionalPresence(t *testing.T) {
 	type Config struct {
 		Present string `yaml:"present"`

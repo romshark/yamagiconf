@@ -820,6 +820,10 @@ func validateYAMLValues(
 			}
 		}
 	case reflect.Map:
+		if node.Kind != yaml.MappingNode {
+			// No key-value pairs to validate; the decoder reports the mismatch.
+			return nil
+		}
 		tpKey, tpVal := tp.Key(), tp.Elem()
 		for i := 0; i < len(node.Content); i += 2 {
 			if node.Content[i].Tag == "!!merge" {
