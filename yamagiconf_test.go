@@ -1613,6 +1613,38 @@ func TestLoadMapGivenNonMapping(t *testing.T) {
 	assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
 }
 
+// TestLoadSliceGivenNonSequence verifies that giving a slice- or array-typed
+// field a non-sequence YAML node reports a malformed-YAML error, consistently
+// regardless of the element type.
+func TestLoadSliceGivenNonSequence(t *testing.T) {
+	type Item struct {
+		A string `yaml:"a"`
+	}
+	t.Run("slice_of_struct", func(t *testing.T) {
+		type Config struct {
+			X []Item `yaml:"x"`
+		}
+		_, err := LoadSrc[Config]("x:\n  k: v\n")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+	})
+
+	t.Run("array_of_struct", func(t *testing.T) {
+		type Config struct {
+			X [2]Item `yaml:"x"`
+		}
+		_, err := LoadSrc[Config]("x:\n  k: v\n")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+	})
+
+	t.Run("slice_of_string", func(t *testing.T) {
+		type Config struct {
+			X []string `yaml:"x"`
+		}
+		_, err := LoadSrc[Config]("x:\n  k: v\n")
+		assert.IsError(t, err, yamagiconf.ErrYAMLMalformed)
+	})
+}
+
 func TestLoadWithOptionalPresence(t *testing.T) {
 	type Config struct {
 		Present string `yaml:"present"`

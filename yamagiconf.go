@@ -806,6 +806,10 @@ func validateYAMLValues(
 			}
 		}
 	case reflect.Slice, reflect.Array:
+		if node.Kind != yaml.SequenceNode {
+			// No items to validate; the decoder reports the mismatch.
+			return nil
+		}
 		tp := tp.Elem()
 		for index, node := range node.Content {
 			if node.Tag == "!!null" && node.Value == "" {
