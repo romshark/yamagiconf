@@ -121,7 +121,7 @@ func applyOptions(opts []Option) options {
 //   - the yaml file contains any unused anchors.
 //   - the yaml file contains any anchors with implicit null value (no value).
 //   - the yaml file assigns non-string values to Go types implementing the
-//     encoding.TextUnmarshaler interface.
+//     [encoding.TextUnmarshaler] interface.
 func LoadFile[T any](yamlFilePath string, config *T, opts ...Option) error {
 	if config == nil {
 		return ErrConfigNil
@@ -322,7 +322,7 @@ func getConfigTypeName(t reflect.Type) string {
 // invokeValidateRecursively runs the Validate method for
 // every field of type that implements the Validator interface recursively.
 // Assumes type of v was validated first using ValidateType.
-// If node != nil then assumes validateYAMLValues was run first on it.
+// If node != nil then assumes [validateYAMLValues] was run first on it.
 func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) error {
 	tp := v.Type()
 
@@ -445,7 +445,7 @@ func unmarshalEnv(path, envVar string, v reflect.Value) error {
 	textUnmarshaler := asIface[encoding.TextUnmarshaler](v, true)
 	if isPtr := tp.Kind() == reflect.Pointer; isPtr &&
 		tp.Elem().Kind() == reflect.Struct && !v.IsNil() && textUnmarshaler == nil {
-		// Pointer to a struct type that doesn't implement encoding.TextUnmarshaler
+		// Pointer to a struct type that doesn't implement [encoding.TextUnmarshaler]
 		v, tp = v.Elem(), tp.Elem()
 	} else if isPtr {
 		env, ok := os.LookupEnv(envVar)
@@ -773,8 +773,7 @@ func validateYAMLValues(
 			implementsInterface[yaml.Unmarshaler](tp) {
 			return nil
 		}
-		for i := range tp.NumField() {
-			f := tp.Field(i)
+		for f := range tp.Fields() {
 			if !f.IsExported() {
 				continue
 			}
@@ -890,12 +889,12 @@ func validateValue(tp reflect.Type, node *yaml.Node) error {
 //   - T contains any unsupported types (signed and unsigned integers with unspecified
 //     width, interface (including `any`), function, channel,
 //     unsafe.Pointer, pointer to pointer, pointer to slice, pointer to map).
-//   - T is not a struct or implements yaml.Unmarshaler or encoding.TextUnmarshaler.
+//   - T is not a struct or implements [yaml.Unmarshaler] or [encoding.TextUnmarshaler].
 //   - T contains any structs with no exported fields.
 //   - T contains any structs with yaml and/or env tags assigned to unexported fields.
-//   - T contains any struct implementing either yaml.Unmarshaler or
-//     encoding.TextUnmarshaler that contains fields with yaml or env struct tags.
-//   - T contains any fields with env tag on a type that implements yaml.Unmarshaler.
+//   - T contains any struct implementing either [yaml.Unmarshaler] or
+//     [encoding.TextUnmarshaler] that contains fields with yaml or env struct tags.
+//   - T contains any fields with env tag on a type that implements [yaml.Unmarshaler].
 //   - T contains any struct containing multiple fields with the same yaml tag.
 func ValidateType[T any]() error {
 	stack := []reflect.Type{}
@@ -917,8 +916,7 @@ func ValidateType[T any]() error {
 
 			exportedFields := 0
 			yamlTags := map[string]string{} // tag -> path
-			for i := range tp.NumField() {
-				f := tp.Field(i)
+			for f := range tp.Fields() {
 				yamlTag := getYAMLFieldName(f.Tag)
 				yamlIgnored := yamlTag == "-"
 				path := path + "." + f.Name
@@ -1023,7 +1021,7 @@ func ValidateType[T any]() error {
 }
 
 // validateTypeImplementingIfaces assumes that implementer is
-// implementing either encoding.TextUnmarshaler or yaml.Unmarshaler
+// implementing either [encoding.TextUnmarshaler] or [yaml.Unmarshaler]
 func validateTypeImplementingIfaces(path string, implementer reflect.Type) error {
 	implementedIface := "yaml.Unmarshaler"
 	if implementsInterface[encoding.TextUnmarshaler](implementer) {
@@ -1032,8 +1030,7 @@ func validateTypeImplementingIfaces(path string, implementer reflect.Type) error
 	if implementer.Kind() != reflect.Struct {
 		return nil
 	}
-	for i := range implementer.NumField() {
-		f := implementer.Field(i)
+	for f := range implementer.Fields() {
 		if tag := getYAMLFieldName(f.Tag); tag != "" && tag != "-" {
 			return fmt.Errorf("at %s: struct implements %s but field contains tag "+
 				"\"yaml\" (%q): %w", path, implementedIface, tag,

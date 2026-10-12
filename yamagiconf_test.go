@@ -2249,8 +2249,6 @@ func (v *ValidatedStringPtr) Validate() error {
 	return nil
 }
 
-func PtrTo[T any](t T) *T { return &t }
-
 func TestValidator(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		t.Setenv("NOYAML_STR", "noyaml_text")
@@ -2274,9 +2272,9 @@ container:
 			Bar: "b",
 			Container: ContainerStruct{
 				ValidatedString:       "valid",
-				PtrValidatedString:    PtrTo(ValidatedString("valid")),
+				PtrValidatedString:    new(ValidatedString("valid")),
 				ValidatedStringPtr:    "valid",
-				PtrValidatedStringPtr: PtrTo(ValidatedStringPtr("valid")),
+				PtrValidatedStringPtr: new(ValidatedStringPtr("valid")),
 				Slice:                 []ValidatedString{"valid", "valid"},
 				Map:                   ValidatedMap{"valid": "valid"},
 			},
@@ -2961,7 +2959,7 @@ ptr-duration-null: null
 }
 
 // primitiveTextUnmarshaler is a string-kinded type that implements
-// encoding.TextUnmarshaler. Its UnmarshalText prefixes the value so we can
+// [encoding.TextUnmarshaler]. Its UnmarshalText prefixes the value so we can
 // tell whether it was called.
 type primitiveTextUnmarshaler string
 
@@ -2973,7 +2971,7 @@ func (p *primitiveTextUnmarshaler) UnmarshalText(text []byte) error {
 }
 
 // TestLoadEnvVarPrimitiveTextUnmarshaler tests that an env var applied to a
-// named string type implementing encoding.TextUnmarshaler goes through
+// named string type implementing [encoding.TextUnmarshaler] goes through
 // UnmarshalText rather than being set as a raw string.
 func TestLoadEnvVarPrimitiveTextUnmarshaler(t *testing.T) {
 	type TestConfig struct {
