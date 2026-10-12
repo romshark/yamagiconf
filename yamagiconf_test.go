@@ -1985,12 +1985,13 @@ container:
   array-map-val-val:
     - null
 `)
-		valid := ValidatedString("valid")
 		assert.NoError(t, err)
 		assert.Equal(t, TestConfig{Container: Container{
-			Str:       "ok",
-			Slice:     []ValidatedString{"valid", "valid"},
-			SlicePtr:  []*ValidatedString{&valid, &valid},
+			Str:   "ok",
+			Slice: []ValidatedString{"valid", "valid"},
+			SlicePtr: []*ValidatedString{
+				new(ValidatedString("valid")), new(ValidatedString("valid")),
+			},
 			NoYAMLStr: "noyaml_ok",
 		}}, *c)
 		assert.NoError(t, yamagiconf.Validate(*c))
