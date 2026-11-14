@@ -1867,7 +1867,8 @@ bar: 2
 ---
 foo: 1
 ---
-:
+foo: 2
+- x
 `)
 		assert.IsError(t, err, yamagiconf.ErrYAMLMultidoc)
 		assert.Contains(t, err.Error(), yamagiconf.ErrYAMLMultidoc.Error())

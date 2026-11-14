@@ -150,14 +150,17 @@ func Load[T any, S string | []byte](yamlSource S, config *T, opts ...Option) err
 
 	var rootNode yaml.Node
 	{
-		dec := newDecoderYAML(yamlSource)
-		if err := dec.Decode(&rootNode); err != nil {
+		dec, err := newLoaderYAML(yamlSource)
+		if err != nil {
+			return err
+		}
+		if err := dec.Load(&rootNode); err != nil {
 			return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
 		}
 
 		// Check if multi-doc
 		var n yaml.Node
-		if err := dec.Decode(&n); err == nil {
+		if err := dec.Load(&n); err == nil {
 			return fmt.Errorf("at %d:%d: %w", n.Line, n.Column, ErrYAMLMultidoc)
 		} else if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("%w: %w", ErrYAMLMultidoc, err)
@@ -186,9 +189,11 @@ func Load[T any, S string | []byte](yamlSource S, config *T, opts ...Option) err
 	}
 
 	{
-		dec := newDecoderYAML(yamlSource)
-		dec.KnownFields(true)
-		if err := dec.Decode(config); err != nil {
+		dec, err := newLoaderYAML(yamlSource, yaml.WithKnownFields())
+		if err != nil {
+			return err
+		}
+		if err := dec.Load(config); err != nil {
 			return fmt.Errorf("%w: %w", ErrYAMLMalformed, err)
 		}
 	}
@@ -425,7 +430,7 @@ func invokeValidateRecursively(path string, v reflect.Value, node *yaml.Node) er
 	return nil
 }
 
-func newDecoderYAML[S string | []byte](s S) *yaml.Decoder {
+func newLoaderYAML[S string | []byte](s S, opts ...yaml.Option) (*yaml.Loader, error) {
 	var reader io.Reader
 	switch s := any(s).(type) {
 	case []byte:
@@ -433,7 +438,7 @@ func newDecoderYAML[S string | []byte](s S) *yaml.Decoder {
 	case string:
 		reader = strings.NewReader(s)
 	}
-	return yaml.NewDecoder(reader)
+	return yaml.NewLoader(reader, opts...)
 }
 
 // unmarshalEnv traverses v and overwrites the values when an `env` struct tag
